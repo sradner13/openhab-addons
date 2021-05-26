@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="onstar"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<!-- OnStar API Bridge -->
+	<bridge-type id="onstarapi">
+		<label>OnStar API</label>
+		<description>This bridge represents the gateway to OnStar API.</description>
+
+		<config-description>
+
+			<parameter-group name="credentials">
+				<label>Credentials</label>
+				<description>OnStar User Account Credentials.</description>
+			</parameter-group>
+			<parameter-group name="authorization">
+				<label>Authorization</label>
+				<description>OnStar API Authorization Identifiers.</description>
+			</parameter-group>
+
+			<parameter name="username" type="text" groupName="credentials">
+				<label>Username</label>
+				<description>Your OnStar username (email)</description>
+				<required>true</required>
+			</parameter>
+			<parameter name="password" type="text" groupName="credentials">
+				<label>Password</label>
+				<description>Your OnStar password</description>
+				<required>true</required>
+				<context>password</context>
+			</parameter>
+			<parameter name="pin" type="text" groupName="credentials">
+				<label>PIN</label>
+				<description>Your OnStar PIN</description>
+				<required>true</required>
+				<context>password</context>
+			</parameter>
+			<parameter name="clientid" type="text" groupName="authorization">
+				<label>Client ID</label>
+				<description>OnStar Client ID</description>
+				<required>true</required>
+				<default>OMB_CVY_AND_5A1</default>
+			</parameter>
+			<parameter name="clientsecret" type="text" groupName="authorization">
+				<label>Client Secret</label>
+				<description>Onstar Client Secret</description>
+				<required>true</required>
+				<default>UGzw6PB8wpKANvnYewmSREXpxtbBkjjmGP6s</default>
+			</parameter>
+		</config-description>
+	</bridge-type>
+</thing:thing-descriptions>

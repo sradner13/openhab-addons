@@ -1,0 +1,750 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="onstar"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<!-- GM Vehicle -->
+	<thing-type id="vehicle">
+		<supported-bridge-type-refs>
+			<bridge-type-ref id="onstarapi"/>
+		</supported-bridge-type-refs>
+
+		<label>Vehicle</label>
+		<description>A Vehicle Associated with the OnStar Account</description>
+
+		<channel-groups>
+			<channel-group id="commands" typeId="commands"/>
+			<channel-group id="location" typeId="location"/>
+			<channel-group id="evbatterylevel" typeId="evbatterylevel"/>
+			<channel-group id="ambientairtemperature" typeId="ambientairtemperature"/>
+			<channel-group id="odometer" typeId="odometer"/>
+			<channel-group id="lifetimeevodometer" typeId="lifetimeevodometer"/>
+			<channel-group id="vehiclerange" typeId="vehiclerange"/>
+			<channel-group id="evplugvoltage" typeId="evplugvoltage"/>
+			<channel-group id="evplugstate" typeId="evplugstate"/>
+			<channel-group id="chargerpowerlevel" typeId="chargerpowerlevel"/>
+			<channel-group id="evchargestate" typeId="evchargestate"/>
+			<channel-group id="evschedulechargestart" typeId="evschedulechargestart"/>
+			<channel-group id="getchargemode" typeId="getchargemode"/>
+			<channel-group id="evestimatedchargeend" typeId="evestimatedchargeend"/>
+			<channel-group id="getcommuteschedule" typeId="getcommuteschedule"/>
+			<channel-group id="lasttripdistance" typeId="lasttripdistance"/>
+			<channel-group id="lasttripfueleconomy" typeId="lasttripfueleconomy"/>
+			<channel-group id="energyefficiency" typeId="energyefficiency"/>
+			<channel-group id="tirepressure" typeId="tirepressure"/>
+			<channel-group id="intermvoltbattvolt" typeId="intermvoltbattvolt"/>
+			<channel-group id="hybridbatteryminimumtemperature" typeId="hybridbatteryminimumtemperature"/>
+			<channel-group id="lifetimeenergyused" typeId="lifetimeenergyused"/>
+			<channel-group id="lifetimefuelecon" typeId="lifetimefuelecon"/>
+			<channel-group id="lifetimefuelused" typeId="lifetimefuelused"/>
+			<channel-group id="hotspotconfig" typeId="hotspotconfig"/>
+			<channel-group id="hotspotstatus" typeId="hotspotstatus"/>
+			<channel-group id="fueltankinfo" typeId="fueltankinfo"/>
+			<channel-group id="enginecoolanttemp" typeId="enginecoolanttemp"/>
+			<channel-group id="enginerpm" typeId="enginerpm"/>
+			<channel-group id="oillife" typeId="oillife"/>
+		</channel-groups>
+
+		<config-description>
+			<parameter name="vin" type="text" required="true">
+				<label>Vehicle Identification Number</label>
+				<description>VIN of the vehicle associated with this Thing</description>
+			</parameter>
+
+			<parameter name="unlink" type="boolean" required="true">
+				<label>Remove Links to Unused Channels from Vehicle</label>
+				<description>Attempt to remove links to unused channels (EXPERIMENTAL)</description>
+				<default>false</default>
+			</parameter>
+
+			<parameter name="refreshdiagnostics" type="integer" min="0" max="8" required="false">
+				<label>Diagnostic Refresh Per Day</label>
+				<description>Specifies the number of refresh attempts per day.</description>
+				<default>0</default>
+			</parameter>
+
+			<parameter name="refreshlocation" type="integer" min="0" max="8" required="false">
+				<label>Location Refresh Per Day</label>
+				<description>Specifies the number of refresh attempts per day.</description>
+				<default>0</default>
+			</parameter>
+		</config-description>
+	</thing-type>
+
+	<!-- Commands -->
+
+	<channel-group-type id="commands">
+		<label>Events Which Can be Explicitly Initiated</label>
+		<channels>
+			<channel id="diagnostics-message" typeId="updatemessage">
+				<label>Refresh Diagnostics Status</label>
+			</channel>
+			<channel id="diagnostics" typeId="diagnostics"/>
+			<channel id="location-message" typeId="updatemessage">
+				<label>Refresh Location Status</label>
+			</channel>
+			<channel id="location" typeId="location"/>
+			<channel id="remotestart-message" typeId="updatemessage">
+				<label>Remote Start Status</label>
+			</channel>
+			<channel id="remotestart" typeId="remotestart"/>
+			<channel id="vehicleaccess-message" typeId="updatemessage">
+				<label>Vehicle Access Status</label>
+			</channel>
+			<channel id="vehicleaccess" typeId="vehicleaccess"/>
+			<channel id="vehiclealert-message" typeId="updatemessage">
+				<label>Vehicle Alert Status</label>
+			</channel>
+			<channel id="vehiclealert" typeId="vehiclealert"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-type id="diagnostics">
+		<item-type>String</item-type>
+		<label>Refresh Diagnostics</label>
+		<category>status</category>
+		<command>
+			<options>
+				<option value="diagnostics">Refresh</option>
+			</options>
+		</command>
+	</channel-type>
+
+	<channel-type id="location">
+		<item-type>String</item-type>
+		<label>Refresh Location</label>
+		<category>status</category>
+		<command>
+			<options>
+				<option value="location">Refresh</option>
+			</options>
+		</command>
+	</channel-type>
+
+	<channel-type id="remotestart">
+		<item-type>String</item-type>
+		<label>Remote Start</label>
+		<category>climate</category>
+		<command>
+			<options>
+				<option value="start">Climate On</option>
+				<option value="cancelStart">Climate Off</option>
+			</options>
+		</command>
+	</channel-type>
+
+	<channel-type id="vehicleaccess">
+		<item-type>String</item-type>
+		<label>Vehicle Access</label>
+		<category>lock</category>
+		<command>
+			<options>
+				<option value="lockDoor">Lock</option>
+				<option value="unlockDoor">Unlock</option>
+			</options>
+		</command>
+	</channel-type>
+
+	<channel-type id="vehiclealert">
+		<item-type>String</item-type>
+		<label>Vehicle Alert</label>
+		<category>siren</category>
+		<command>
+			<options>
+				<option value="honk">Honk</option>
+				<option value="flash">Flash</option>
+				<option value="both">Both</option>
+				<option value="cancelAlert">Silence</option>
+			</options>
+		</command>
+	</channel-type>
+
+	<!-- Groups for Chevy Bolt (tested) -->
+
+	<channel-group-type id="ambientairtemperature">
+		<label>Ambient Air Temperature</label>
+		<channels>
+			<channel id="ambientairtemperature" typeId="system.outdoor-temperature">
+				<label>Air Temperature</label>
+				<description>Ambient Air Temperature</description>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="lasttripfueleconomy">
+		<label>Last Trip Fuel Economy</label>
+		<channels>
+			<channel id="lasttripelectricecon" typeId="economy">
+				<label>Last Trip Electric Economy</label>
+			</channel>
+			<channel id="lasttripfuelecon" typeId="fuelecon">
+				<label>Last Trip Fuel Economy</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="energyefficiency">
+		<label>Energy Efficiency</label>
+		<channels>
+			<channel id="co2avoided" typeId="co2avoided">
+				<label>Carbon Dioxide Avoided</label>
+			</channel>
+			<channel id="electriceconomy" typeId="energyamount">
+				<label>Electric Efficiency</label>
+				<description>Redundant to Life Electric Efficiency</description>
+			</channel>
+			<channel id="fuelavoided" typeId="fuelvolume">
+				<label>Fuel Avoided</label>
+			</channel>
+			<channel id="gasmiles" typeId="gasmiles">
+				<label>Fuel Miles</label>
+			</channel>
+			<channel id="lifetimeefficiency" typeId="energyamount">
+				<label>Lifetime Electric Efficiency</label>
+			</channel>
+			<channel id="lifetimefuelecon" typeId="fuelecon">
+				<label>Lifetime Fuel Efficiency</label>
+			</channel>
+			<channel id="lifetimempge" typeId="economy">
+				<label>Lifetime Electric Economy</label>
+				<description>Miles Per Gallon Equivalent</description>
+			</channel>
+			<channel id="odometer" typeId="odometer">
+				<label>Lifetime Odometer</label>
+				<description>Redundant to Odometer</description>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="hybridbatteryminimumtemperature">
+		<label>Hybrid Battery Minimum Temperature</label>
+		<channels>
+			<channel id="hybridbatteryminimumtemperature" typeId="system.outdoor-temperature">
+				<label>Hybrid Battery Minimum Temperature</label>
+				<description>Hybrid Battery Minimum Temperature</description>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="evestimatedchargeend">
+		<label>EV Estimated Charge End</label>
+		<channels>
+			<channel id="estchgend120v" typeId="evchgtime">
+				<label>Estimated Charge End Time @ 120 Volts</label>
+			</channel>
+			<channel id="estchgend240v" typeId="evchgtime">
+				<label>Estimated Charge End Time @ 240 Volts</label>
+			</channel>
+			<channel id="estchgend400v" typeId="evchgtime">
+				<label>Estimated Charge End Time @ 400 Volts</label>
+			</channel>
+			<channel id="evestimatedchargeend120vday" typeId="evchgday">
+				<label>Estimated Charge End Day @ 120 Volts</label>
+			</channel>
+			<channel id="evestimatedchargeend240vday" typeId="evchgday">
+				<label>Estimated Charge End Day @ 240 Volts</label>
+			</channel>
+			<channel id="evestimatedchargeend400vday" typeId="evchgday">
+				<label>Estimated Charge End Day @ 400 Volts</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="lifetimeenergyused">
+		<label>Lifetime Energy Used</label>
+		<channels>
+			<channel id="lifetimeenergyused" typeId="energyamount">
+				<label>Lifetime Energy Used</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="evbatterylevel">
+		<label>EV Battery Level</label>
+		<channels>
+			<channel id="evbatterylevel" typeId="system.battery-level"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="evplugvoltage">
+		<label>EV Plug Voltage</label>
+		<channels>
+			<channel id="evplugvoltage" typeId="evvoltage"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="hotspotconfig">
+		<label>Hot Spot Config</label>
+		<channels>
+			<channel id="passphrase" typeId="passphrase"/>
+			<channel id="ssid" typeId="ssid"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="hotspotstatus">
+		<label>Hot Spot Status</label>
+		<channels>
+			<channel id="hotspotstatus" typeId="hotspotstatus"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="odometer">
+		<label>Odometer</label>
+		<channels>
+			<channel id="odometer" typeId="odometer">
+				<label>Odometer</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="chargerpowerlevel">
+		<label>Charger Power Level</label>
+		<channels>
+			<channel id="chargerpowerlevel" typeId="chargerpowerlevel"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="lifetimeevodometer">
+		<label>Lifetime EV Odometer</label>
+		<channels>
+			<channel id="lifetimeevodometer" typeId="odometer">
+				<label>Lifetime EV Odometer</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="evplugstate">
+		<label>EV Plug State</label>
+		<channels>
+			<channel id="evplugstate" typeId="evplugstate"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="evchargestate">
+		<label>EV Charge State</label>
+		<channels>
+			<channel id="evchargestate" typeId="evchargestate"/>
+			<channel id="prioritychargeindicator" typeId="prioritychargeindicator"/>
+			<channel id="prioritychargestatus" typeId="prioritychargestatus"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="tirepressure">
+		<label>Tire Pressure</label>
+		<channels>
+			<channel id="tirepressurelf" typeId="tirepressure">
+				<label>Left Front Tire</label>
+			</channel>
+			<channel id="tirepressurelf-message" typeId="tirepressure-message">
+				<label>Left Front Tire Message</label>
+			</channel>
+			<channel id="tirepressurelr" typeId="tirepressure">
+				<label>Left Rear Tire</label>
+			</channel>
+			<channel id="tirepressurelr-message" typeId="tirepressure-message">
+				<label>Left Rear Tire Message</label>
+			</channel>
+			<channel id="tirepressurerf" typeId="tirepressure">
+				<label>Right Front Tire</label>
+			</channel>
+			<channel id="tirepressurerf-message" typeId="tirepressure-message">
+				<label>Right Front Tire Message</label>
+			</channel>
+			<channel id="tirepressurerr" typeId="tirepressure">
+				<label>Right Rear Tire</label>
+			</channel>
+			<channel id="tirepressurerr-message" typeId="tirepressure-message">
+				<label>Right Rear Tire Message</label>
+			</channel>
+			<channel id="tirepressureplacardfront" typeId="tirepressure">
+				<label>Door Placard Front Tire Pressure</label>
+			</channel>
+			<channel id="tirepressureplacardrear" typeId="tirepressure">
+				<label>Door Placard Rear Tire Pressure</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="lasttripdistance">
+		<label>Last Trip Distance</label>
+		<channels>
+			<channel id="lasttriptotaldistance" typeId="distance">
+				<label>Last Trip Total Distance</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="intermvoltbattvolt">
+		<label>Interm Volt Batt Volt</label>
+		<channels>
+			<channel id="intermvoltbattvolt" typeId="evvoltage">
+				<label>Interm Volt Batt Volt</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="getcommuteschedule">
+		<label>Get Commute Schedule</label>
+		<channels>
+			<channel id="sun" typeId="evchgtime">
+				<label>Sunday Commute Time</label>
+			</channel>
+			<channel id="mon" typeId="evchgtime">
+				<label>Monday Commute Time</label>
+			</channel>
+			<channel id="tue" typeId="evchgtime">
+				<label>Tuesday Commute Time</label>
+			</channel>
+			<channel id="wed" typeId="evchgtime">
+				<label>Wednesday Commute Time</label>
+			</channel>
+			<channel id="thu" typeId="evchgtime">
+				<label>Thursday Commute Time</label>
+			</channel>
+			<channel id="fri" typeId="evchgtime">
+				<label>Friday Commute Time</label>
+			</channel>
+			<channel id="sat" typeId="evchgtime">
+				<label>Saturday Commute Time</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="getchargemode">
+		<label>Get Charge Mode</label>
+		<channels>
+			<channel id="chargemode" typeId="chargemode"/>
+			<channel id="ratetype" typeId="ratetype"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="evschedulechargestart">
+		<label>EV Schedule Charge Start</label>
+		<channels>
+			<channel id="evscheduledchargestart120vday" typeId="evchgday">
+				<label>Schedule Charge Start Day @ 120V</label>
+			</channel>
+			<channel id="evscheduledchargestart240vday" typeId="evchgday">
+				<label>Schedule Charge Start Day @ 240V</label>
+			</channel>
+			<channel id="evscheduledchargestart120v" typeId="evchgtime">
+				<label>Schedule Charge Start Time @ 120V</label>
+			</channel>
+			<channel id="evscheduledchargestart240v" typeId="evchgtime">
+				<label>Schedule Charge Start Time @ 240V</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="vehiclerange">
+		<label>Vehicle Range</label>
+		<channels>
+			<channel id="evmaxrange" typeId="distance">
+				<label>EV Maximum Range</label>
+			</channel>
+			<channel id="evminrange" typeId="distance">
+				<label>EV Mimimum Range</label>
+			</channel>
+			<channel id="evrange" typeId="distance">
+				<label>EV Range</label>
+			</channel>
+			<channel id="gasrange" typeId="distance">
+				<label>Fuel Range</label>
+			</channel>
+			<channel id="totalrange" typeId="distance">
+				<label>Coolant Temp</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="enginecoolanttemp">
+		<label>Engine Coolant Temp</label>
+		<channels>
+			<channel id="enginecoolanttemp" typeId="system.outdoor-temperature">
+				<label>Coolant Temp</label>
+				<description>Current Engine Coolant Temperature</description>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="enginerpm">
+		<label>Engine RPM</label>
+		<channels>
+			<channel id="enginerpm" typeId="enginerpm"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="lifetimefuelecon">
+		<label>Lifetime Fuel Used</label>
+		<channels>
+			<channel id="lifetimeFuelecon" typeId="fuelecon">
+				<label>Lifetime Fuel Economy</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="lifetimefuelused">
+		<label>Lifetime Fuel Used</label>
+		<channels>
+			<channel id="lifetimeFuelUsed" typeId="fuelvolume">
+				<label>Lifetime Fuel Used</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="fueltankinfo">
+		<label>Fuel Amount</label>
+		<channels>
+			<channel id="fuelamount" typeId="fuelamount">
+				<label>Fuel Amount</label>
+			</channel>
+			<channel id="fuelcapacity" typeId="fuelamount">
+				<label>Fuel Capacity</label>
+			</channel>
+			<channel id="fuellevel" typeId="fuelpercent">
+				<label>Fuel Level Percentage</label>
+			</channel>
+			<channel id="fuellevelingal" typeId="fuelamount">
+				<label>Fuel Level</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<channel-group-type id="oillife">
+		<label>Oil Life</label>
+		<channels>
+			<channel id="oillife" typeId="oillife"/>
+			<channel id="oillife-message" typeId="oilmessage"/>
+		</channels>
+	</channel-group-type>
+
+	<!-- Groups found in documentation (untested) -->
+
+	<channel-group-type id="handsfreecalling">
+		<label>Hands Free Calling</label>
+		<channels>
+			<channel id="handsfreecalling" typeId="handsfreecalling"/>
+		</channels>
+	</channel-group-type>
+
+	<!-- Group not included in standard diagnostics -->
+
+	<channel-group-type id="location">
+		<label>Location</label>
+		<channels>
+			<channel id="location" typeId="system.location">
+				<label>Vehicle Location</label>
+			</channel>
+		</channels>
+	</channel-group-type>
+
+	<!-- Channel Type Definitions -->
+
+	<channel-type id="tirepressure">
+		<item-type>Number</item-type>
+		<label>Tire Pressure</label>
+		<description>KiloPascals or Pounds per Square Inch</description>
+		<category>pressure</category>
+		<state readOnly="true" pattern="%.1f"/>
+	</channel-type>
+
+	<channel-type id="tirepressure-message">
+		<item-type>String</item-type>
+		<label>Tire Pressure Message</label>
+		<category>text</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="odometer">
+		<item-type>Number:Length</item-type>
+		<label>Odometer</label>
+		<state readOnly="true" pattern="%.1f %unit%"/>
+	</channel-type>
+
+	<channel-type id="evvoltage">
+		<item-type>Number:ElectricPotential</item-type>
+		<label>Voltage</label>
+		<category>energy</category>
+		<state readOnly="true" pattern="%.2f %unit%"/>
+	</channel-type>
+
+	<channel-type id="enginerpm">
+		<item-type>Number</item-type>
+		<label>Engine RPM</label>
+		<description>Current Engine Revelutions Per Minute</description>
+		<state readOnly="true" pattern="%d RPM"/>
+	</channel-type>
+
+	<channel-type id="energyamount">
+		<item-type>Number:Energy</item-type>
+		<label>KiloWatt Hours of Energy</label>
+		<category>energy</category>
+		<state readOnly="true" pattern="%.2f %unit%"/>
+	</channel-type>
+
+	<channel-type id="economy">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Fuel Economy</label>
+		<description>Kilometer per Litre or Miles per Gallon"</description>
+		<state readOnly="true" pattern="%.2f"/>
+	</channel-type>
+
+	<channel-type id="passphrase">
+		<item-type>String</item-type>
+		<label>Passphrase</label>
+		<category>text</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="ssid">
+		<item-type>String</item-type>
+		<label>SSID</label>
+		<category>text</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="hotspotstatus">
+		<item-type>String</item-type>
+		<label>Status</label>
+		<category>network</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="co2avoided">
+		<item-type>Number:Mass</item-type>
+		<label>CO2 Avoided</label>
+		<category>carbondioxide</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="fuelvolume">
+		<item-type>Number:Volume</item-type>
+		<label>Fuel Volume</label>
+		<category>gas</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="efficiency">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Efficiency</label>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="oillife">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Oil Life</label>
+		<category>oil</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="oilmessage">
+		<item-type>String</item-type>
+		<label>Oil Life Message</label>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="fuelecon">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Fuel Economy</label>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="gasmiles">
+		<item-type>Number:Length</item-type>
+		<label>Gas Miles</label>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="evchgtime">
+		<item-type>String</item-type>
+		<label>EV Charge Time</label>
+		<category>time</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="evchgday">
+		<item-type>String</item-type>
+		<label>EV Charge Day</label>
+		<category>calendar</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="distance">
+		<item-type>Number:Length</item-type>
+		<label>Distance</label>
+		<category></category>
+		<state readOnly="true" pattern="%.1f %unit%"/>
+	</channel-type>
+
+	<channel-type id="evplugstate">
+		<item-type>String</item-type>
+		<label>EV Plug State</label>
+		<category>poweroutlet</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="chargerpowerlevel">
+		<item-type>String</item-type>
+		<label>Charger Power Level</label>
+		<category>text</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="evchargestate">
+		<item-type>String</item-type>
+		<label>EV Charge State</label>
+		<category>text</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="chargemode">
+		<item-type>String</item-type>
+		<label>Charge Mode</label>
+		<category>text</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="fuelamount">
+		<item-type>Number:Volume</item-type>
+		<label>Fuel Amount</label>
+		<category>gas</category>
+		<state readOnly="true" pattern="%.1f %unit%"/>
+	</channel-type>
+
+	<channel-type id="prioritychargeindicator">
+		<item-type>String</item-type>
+		<label>Priority Charge Indicator</label>
+		<category>text</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="prioritychargestatus">
+		<item-type>String</item-type>
+		<label>Priority Charge Status</label>
+		<category>text</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="ratetype">
+		<item-type>String</item-type>
+		<label>Rate Type</label>
+		<category>text</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="fuelpercent">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Fuel Percent</label>
+		<category>gas</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="updatemessage">
+		<item-type>String</item-type>
+		<label>Update Status</label>
+		<category>text</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+</thing:thing-descriptions>
