@@ -130,6 +130,7 @@
 /bundles/org.openhab.binding.irobot/ @Sonic-Amiga
 /bundles/org.openhab.binding.irtrans/ @kgoderis
 /bundles/org.openhab.binding.ism8/ @hans-reiner
+/bundles/org.openhab.binding.isy/ @dmazan
 /bundles/org.openhab.binding.jablotron/ @octa22
 /bundles/org.openhab.binding.jeelink/ @vbier
 /bundles/org.openhab.binding.kaleidescape/ @mlobstein
