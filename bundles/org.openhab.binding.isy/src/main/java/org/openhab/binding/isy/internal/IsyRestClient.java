@@ -240,7 +240,7 @@ public class IsyRestClient implements OHIsyClient {
         List<Node> returnValue = new ArrayList<Node>();
         String variables = nodesTarget.request().header(AUTHORIZATIONHEADERNAME, authorizationHeaderValue)
                 .accept(MediaType.TEXT_XML).get(String.class);
-        System.out.println("nodes xml: " + variables);
+        // System.out.println("nodes xml: " + variables);
         DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
         domFactory.setNamespaceAware(true);
         DocumentBuilder builder;
