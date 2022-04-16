@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2021 Contributors to the openHAB project
+ * Copyright (c) 2010-2022 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -152,7 +152,7 @@ public class MiCloudConnector {
         Map<String, String> map = new HashMap<String, String>();
         map.put("data", "{\"obj_name\":\"" + vacuumMap + "\"}");
         String mapResponse = request(url, map);
-        logger.trace("response: {}", mapResponse);
+        logger.trace("Response: {}", mapResponse);
         String errorMsg = "";
         try {
             JsonElement response = JsonParser.parseString(mapResponse);
@@ -181,7 +181,6 @@ public class MiCloudConnector {
 
     public String getDeviceStatus(String device, String country) throws MiCloudException {
         final String response = request("/home/device_list", country, "{\"dids\":[\"" + device + "\"]}");
-        logger.debug("response: {}", response);
         return response;
     }
 
@@ -201,7 +200,6 @@ public class MiCloudConnector {
             throw new MiCloudException(err, e);
         }
         final String response = request("/home/rpc/" + id, country, command);
-        logger.debug("response: {}", response);
         return response;
     }
 
@@ -237,7 +235,7 @@ public class MiCloudConnector {
     public String getDeviceString(String country) {
         String resp;
         try {
-            resp = request("/home/device_list", country, "{\"getVirtualModel\":false,\"getHuamiDevices\":0}");
+            resp = request("/home/device_list_page", country, "{\"getVirtualModel\":true,\"getHuamiDevices\":1}");
             logger.trace("Get devices response: {}", resp);
             if (resp.length() > 2) {
                 CloudUtil.saveDeviceInfoFile(resp, country, logger);
@@ -260,7 +258,7 @@ public class MiCloudConnector {
         String url = urlPart.trim();
         url = getApiUrl(country) + (url.startsWith("/app") ? url.substring(4) : url);
         String response = request(url, params);
-        logger.debug("Request to {} server {}. Response: {}", country, urlPart, response);
+        logger.debug("Request to '{}' server '{}'. Response: '{}'", country, urlPart, response);
         return response;
     }
 
@@ -270,7 +268,7 @@ public class MiCloudConnector {
         }
         loginFailedCounterCheck();
         startClient();
-        logger.debug("Send request: {} to {}", params.get("data"), url);
+        logger.debug("Send request to {} with data '{}'", url, params.get("data"));
         Request request = httpClient.newRequest(url).timeout(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         request.agent(USERAGENT);
         request.header("x-xiaomi-protocal-flag-cli", "PROTOCAL-HTTP2");

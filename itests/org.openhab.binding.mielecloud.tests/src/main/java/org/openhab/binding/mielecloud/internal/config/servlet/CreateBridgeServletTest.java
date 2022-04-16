@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2021 Contributors to the openHAB project
+ * Copyright (c) 2010-2022 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -224,19 +224,5 @@ public class CreateBridgeServletTest extends AbstractConfigFlowTest {
         // then:
         assertTrue(website.contains("Pairing failed!"));
         assertTrue(website.contains("Missing e-mail address."));
-    }
-
-    @Test
-    public void whenAMalformedEmailIsPassedToBridgeCreationThenTheBrowserIsRedirectedToTheFailurePageAndAnErrorIsShown()
-            throws Exception {
-        // when:
-        Website website = getCrawler()
-                .doGetRelative("/mielecloud/createBridgeThing?" + CreateBridgeServlet.BRIDGE_UID_PARAMETER_NAME + "="
-                        + MieleCloudBindingIntegrationTestConstants.BRIDGE_THING_UID.getAsString() + "&"
-                        + CreateBridgeServlet.EMAIL_PARAMETER_NAME + "=openhab.openhab.org");
-
-        // then:
-        assertTrue(website.contains("Pairing failed!"));
-        assertTrue(website.contains("Malformed e-mail address."));
     }
 }

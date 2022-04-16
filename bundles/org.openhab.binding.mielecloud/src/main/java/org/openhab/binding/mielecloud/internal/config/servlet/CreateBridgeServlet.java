@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2021 Contributors to the openHAB project
+ * Copyright (c) 2010-2022 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -23,7 +23,6 @@ import org.openhab.binding.mielecloud.internal.MieleCloudBindingConstants;
 import org.openhab.binding.mielecloud.internal.config.exception.BridgeCreationFailedException;
 import org.openhab.binding.mielecloud.internal.config.exception.BridgeReconfigurationFailedException;
 import org.openhab.binding.mielecloud.internal.handler.MieleBridgeHandler;
-import org.openhab.binding.mielecloud.internal.util.EmailValidator;
 import org.openhab.binding.mielecloud.internal.util.LocaleValidator;
 import org.openhab.core.config.discovery.DiscoveryResult;
 import org.openhab.core.config.discovery.DiscoveryResultBuilder;
@@ -54,7 +53,6 @@ public final class CreateBridgeServlet extends AbstractRedirectionServlet {
 
     private static final String DEFAULT_LOCALE = "en";
 
-    private static final long ONLINE_WAIT_TIMEOUT_IN_MILLISECONDS = 5000;
     private static final long DISCOVERY_COMPLETION_TIMEOUT_IN_MILLISECONDS = 5000;
     private static final long CHECK_INTERVAL_IN_MILLISECONDS = 100;
 
@@ -62,6 +60,8 @@ public final class CreateBridgeServlet extends AbstractRedirectionServlet {
 
     private final Inbox inbox;
     private final ThingRegistry thingRegistry;
+
+    private long onlineWaitTimeoutInMilliseconds = 5000;
 
     /**
      * Creates a new {@link CreateBridgeServlet}.
@@ -72,6 +72,10 @@ public final class CreateBridgeServlet extends AbstractRedirectionServlet {
     public CreateBridgeServlet(Inbox inbox, ThingRegistry thingRegistry) {
         this.inbox = inbox;
         this.thingRegistry = thingRegistry;
+    }
+
+    public void setOnlineWaitTimeoutInMilliseconds(long onlineWaitTimeoutInMilliseconds) {
+        this.onlineWaitTimeoutInMilliseconds = onlineWaitTimeoutInMilliseconds;
     }
 
     @Override
@@ -94,11 +98,6 @@ public final class CreateBridgeServlet extends AbstractRedirectionServlet {
         } catch (IllegalArgumentException e) {
             logger.warn("Cannot create bridge: Bridge UID '{}' is malformed.", bridgeUid);
             return "/mielecloud/failure?" + FailureServlet.MALFORMED_BRIDGE_UID_PARAMETER_NAME + "=true";
-        }
-
-        if (!EmailValidator.isValid(email)) {
-            logger.warn("Cannot create bridge: E-mail address '{}' is malformed.", email);
-            return "/mielecloud/failure?" + FailureServlet.MALFORMED_EMAIL_PARAMETER_NAME + "=true";
         }
 
         String locale = getValidLocale(request.getParameter(LOCALE_PARAMETER_NAME));
@@ -131,7 +130,7 @@ public final class CreateBridgeServlet extends AbstractRedirectionServlet {
         if (inbox.add(result)) {
             return pairBridge(bridgeUid);
         } else {
-            return reconfigureBridge(bridgeUid, locale, email);
+            return reconfigureBridge(bridgeUid);
         }
     }
 
@@ -145,7 +144,7 @@ public final class CreateBridgeServlet extends AbstractRedirectionServlet {
         return thing;
     }
 
-    private Thing reconfigureBridge(ThingUID thingUid, String locale, String email) {
+    private Thing reconfigureBridge(ThingUID thingUid) {
         logger.debug("Thing already exists. Modifying configuration.");
         Thing thing = thingRegistry.get(thingUid);
         if (thing == null) {
@@ -181,7 +180,7 @@ public final class CreateBridgeServlet extends AbstractRedirectionServlet {
     private void waitForBridgeToComeOnline(Thing bridge) {
         try {
             waitForConditionWithTimeout(() -> bridge.getStatus() == ThingStatus.ONLINE,
-                    ONLINE_WAIT_TIMEOUT_IN_MILLISECONDS);
+                    onlineWaitTimeoutInMilliseconds);
             waitForConditionWithTimeout(new DiscoveryResultCountDoesNotChangeCondition(),
                     DISCOVERY_COMPLETION_TIMEOUT_IN_MILLISECONDS);
         } catch (InterruptedException e) {

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2021 Contributors to the openHAB project
+ * Copyright (c) 2010-2022 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -110,7 +110,7 @@ public class ShellyManagerOverviewPage extends ShellyManagerPage {
                     if (!warnings.isEmpty() && (status != ThingStatus.UNKNOWN)) {
                         properties.put(ATTRIBUTE_STATUS_ICON, ICON_ATTENTION);
                     }
-                    if (!deviceType.equalsIgnoreCase("unknown") && (status == ThingStatus.ONLINE)) {
+                    if (!"unknown".equalsIgnoreCase(deviceType) && (status == ThingStatus.ONLINE)) {
                         properties.put(ATTRIBUTE_FIRMWARE_SEL, fillFirmwareHtml(uid, deviceType, profile.mode));
                         properties.put(ATTRIBUTE_ACTION_LIST, fillActionHtml(th, uid));
                     } else {

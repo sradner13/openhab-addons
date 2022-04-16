@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2021 Contributors to the openHAB project
+ * Copyright (c) 2010-2022 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -33,14 +33,13 @@ import org.openhab.binding.deconz.internal.types.ResourceType;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.types.StringType;
 import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingStatusDetail;
-import org.openhab.core.thing.binding.ThingHandlerCallback;
 import org.openhab.core.thing.type.ChannelKind;
-import org.openhab.core.thing.type.ChannelTypeUID;
 import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,7 +116,7 @@ public abstract class SensorBaseThingHandler extends DeconzBaseThingHandler {
 
         // Add some information about the sensor
         if (!sensorConfig.reachable) {
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.GONE, "Not reachable");
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.NONE, "@text/offline.sensor-not-reachable");
             return;
         }
 
@@ -136,6 +135,10 @@ public abstract class SensorBaseThingHandler extends DeconzBaseThingHandler {
         // any battery-powered sensor
         if (sensorConfig.battery != null) {
             createChannel(CHANNEL_BATTERY_LEVEL, ChannelKind.STATE);
+            createChannel(CHANNEL_BATTERY_LOW, ChannelKind.STATE);
+        }
+
+        if (sensorState.lowbattery != null) {
             createChannel(CHANNEL_BATTERY_LOW, ChannelKind.STATE);
         }
 
@@ -169,32 +172,6 @@ public abstract class SensorBaseThingHandler extends DeconzBaseThingHandler {
         String lastSeen = stateResponse.lastseen;
         if (lastSeen != null) {
             updateState(CHANNEL_LAST_SEEN, Util.convertTimestampToDateTime(lastSeen));
-        }
-    }
-
-    protected void createChannel(String channelId, ChannelKind kind) {
-        if (thing.getChannel(channelId) != null) {
-            // channel already exists, no update necessary
-            return;
-        }
-
-        ThingHandlerCallback callback = getCallback();
-        if (callback != null) {
-            ChannelUID channelUID = new ChannelUID(thing.getUID(), channelId);
-            ChannelTypeUID channelTypeUID;
-            switch (channelId) {
-                case CHANNEL_BATTERY_LEVEL:
-                    channelTypeUID = new ChannelTypeUID("system:battery-level");
-                    break;
-                case CHANNEL_BATTERY_LOW:
-                    channelTypeUID = new ChannelTypeUID("system:low-battery");
-                    break;
-                default:
-                    channelTypeUID = new ChannelTypeUID(BINDING_ID, channelId);
-                    break;
-            }
-            Channel channel = callback.createChannelBuilder(channelUID, channelTypeUID).withKind(kind).build();
-            updateThing(editThing().withChannel(channel).build());
         }
     }
 
@@ -237,6 +214,12 @@ public abstract class SensorBaseThingHandler extends DeconzBaseThingHandler {
                     updateState(channelUID, Util.convertTimestampToDateTime(lastUpdated));
                 }
                 break;
+            case CHANNEL_BATTERY_LOW:
+                Boolean lowBattery = newState.lowbattery;
+                if (lowBattery != null) {
+                    updateState(channelUID, OnOffType.from(lowBattery));
+                }
+                break;
             default:
                 // other cases covered by sub-class
         }
@@ -276,6 +259,10 @@ public abstract class SensorBaseThingHandler extends DeconzBaseThingHandler {
             return;
         }
         updateState(channelUID, OnOffType.from(value));
+    }
+
+    protected void updateStringChannel(ChannelUID channelUID, @Nullable String value) {
+        updateState(channelUID, new StringType(value));
     }
 
     protected void updateDecimalTypeChannel(ChannelUID channelUID, @Nullable Number value) {

@@ -254,7 +254,6 @@
 	<thing-type id="shellydimmer">
 		<label>Shelly Dimmer (SHDM-1)</label>
 		<description>Shelly Dimmer</description>
-		<category>DimmableLight</category>
 		<channel-groups>
 			<channel-group id="relay" typeId="dimmerChannel"/>
 			<channel-group id="meter" typeId="meter"/>
@@ -268,7 +267,6 @@
 	<thing-type id="shellydimmer2">
 		<label>Shelly Dimmer 2 (SHDM-2)</label>
 		<description>Shelly Dimmer 2</description>
-		<category>DimmableLight</category>
 		<channel-groups>
 			<channel-group id="relay" typeId="dimmerChannel"/>
 			<channel-group id="meter" typeId="meter"/>
@@ -447,12 +445,19 @@
 		<item-type>Dimmer</item-type>
 		<label>Brightness</label>
 		<description>Light brightness in %</description>
-		<category>DimmableLight</category>
+		<category>Light</category>
 	</channel-type>
 	<channel-type id="meterWatts">
 		<item-type>Number:Power</item-type>
 		<label>Watt</label>
 		<description>Current power consumption in Watt</description>
+		<state readOnly="true" pattern="%.2f %unit%">
+		</state>
+	</channel-type>
+	<channel-type id="supplyVoltage" advanced="true">
+		<item-type>Number:ElectricPotential</item-type>
+		<label>Supply Voltage</label>
+		<description>Supply voltage of the device in Volt</description>
 		<state readOnly="true" pattern="%.2f %unit%">
 		</state>
 	</channel-type>
@@ -522,8 +527,7 @@
 	<channel-type id="meterPowerFactor">
 		<item-type>Number</item-type>
 		<label>Power Factor</label>
-		<description></description>
-		<state readOnly="true" pattern="%.3f %unit%">
+		<state readOnly="true" pattern="%.2f %unit%">
 		</state>
 	</channel-type>
 	<channel-type id="timestamp">

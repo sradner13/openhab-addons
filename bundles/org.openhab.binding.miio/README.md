@@ -1,7 +1,8 @@
-# Xiaomi Mi IO Binding
+# Xiaomi Wifi devices (Mi IO) Binding
 
 This binding is used to control Xiaomi products implementing the Mi IO protocol. 
-This is a set of wifi devices from Xiaomi that are part of the Mi Ecosystem which is branded as MiJia.
+This protocol is used for most of Xiaomi Mi Ecosystem wifi devices which is branded as MiJia.
+If your Xiaomi wifi device is controlled by the mihome app, most likely it communicates using the Mi IO protocol and can communicate with openHAB using this binding.
 
 ![MIIO logo](doc/miio.png)
 
@@ -12,9 +13,11 @@ The following things types are available:
 | ThingType        | Description                                                                                                              |
 |------------------|--------------------------------------------------------------------------------------------------------------------------|
 | miio:generic     | Generic type for discovered devices. Once the token is available and the device model is determined, this ThingType will automatically change to the appropriate ThingType |
-| miio:vacuum      | For Xiaomi Robot Vacuum products                                                                                         |
-| miio:basic       | For several basic devices like yeelights, airpurifiers. Channels and commands are determined by database configuration   |
-| miio:unsupported | For experimenting with other devices which use the Mi IO protocol                                                        |
+| miio:vacuum      | For Xiaomi/RoboRock Robot Vacuum products                                                                                         |
+| miio:basic       | For most other devices like yeelights, airpurifiers. Channels and commands are determined by database configuration   |
+| miio:gateway     | Similar to basic, but with the Bridge feature, it can support to forward commands for connected devices                  |
+| miio:lumi        | Thing type for subdevices connected to the gateway. Note, these devices require a defined gateway to function            |
+| miio:unsupported | For experimenting with other devices which use the Mi IO protocol or to build experimental support                                                       |
 
 # Discovery
 
@@ -76,21 +79,29 @@ However, for devices that are unsupported, you may override the value and try to
 |-----------------|---------|----------|---------------------------------------------------------------------|
 | host            | text    | true     | Device IP address                                                   |
 | token           | text    | true     | Token for communication (in Hex)                                    |
-| deviceId        | text    | true     | Device ID number for communication (in Hex)                         |
+| deviceId        | text    | true     | Device Id (typically a number for normal devices) for communication |
 | model           | text    | false    | Device model string, used to determine the subtype                  |
 | refreshInterval | integer | false    | Refresh interval for refreshing the data in seconds. (0=disabled)   |
 | timeout         | integer | false    | Timeout time in milliseconds                                        |
-| communication   | test    | false    | Communicate direct or via cloud (options values: 'direct', 'cloud') |
+| communication   | text    | false    | Communicate direct or via cloud (options values: 'direct', 'cloud') |
+| cloudServer     | text    | false    | Identifies the country server to use in case of cloud communication |
 
-Note: Suggest to use the cloud communication only for devices that require it. It is unknown at this time if Xiaomi has a rate limit or other limitations on the cloud usage. e.g. if having many devices would trigger some throttling from the cloud side.
+Note: Suggest to use the cloud communication only for devices that require it. 
+It is unknown at this time if Xiaomi has a rate limit or other limitations on the cloud usage. e.g. if having many devices would trigger some throttling from the cloud side.
+Note2: communications parameter is not available for lumi devices. Lumi devices communicate using the bridge/gateway.
 
 ### Example Thing file
 
-`Thing miio:basic:light "My Light" [ host="192.168.x.x", token="put here your token", deviceId="0326xxxx", model="philips.light.bulb", communication="direct"  ]` 
+`Thing miio:basic:light "My Light" [ host="192.168.x.x", token="put here your token", deviceId="326xxxx", model="philips.light.bulb", communication="direct" ]` 
 
 or in case of unknown models include the model information of a similar device that is supported:
 
-`Thing miio:vacuum:s50 "vacuum" @ "livingroom" [ host="192.168.15.20", token="xxxxxxx", deviceId=“0470DDAA”, model="roborock.vacuum.s4", communication="cloud"]`
+`Thing miio:vacuum:s50 "vacuum" @ "livingroom" [ host="192.168.15.20", token="xxxxxxx", deviceId="326xxxx", model="roborock.vacuum.s4", communication="direct", cloudServer="de" ]`
+
+in case of gateway, instead of defining it as a Thing, use Bridge
+
+`Bridge miio:gateway:lumigateway "Mi Smarter Gateway" [ host="10.10.x.x", token="put here your token", deviceId="326xxxx", model="lumi.gateway.mieu01", communication="direct", cloudServer="de" ]` 
+
 
 # Advanced: Unsupported devices
 
@@ -162,7 +173,7 @@ Set the communication in the thing configuration to 'cloud'.
 
 _Cloud connectivity is not working_
 The most common problem is a wrong userId/password. Try to fix your userId/password.
-If it still fails, you're bit out of luck. You may try to restart OpenHAB (not just the binding) to clean the cookies. 
+If it still fails, you're bit out of luck. You may try to restart openHAB (not just the binding) to clean the cookies. 
 As the cloud logon process is still little understood, your only luck might be to enable trace logging and see if you can translate the Chinese error code that it returns.
 
 _My Roborock vacuum is not found or not reacting_
@@ -173,331 +184,373 @@ This will change the communication method and the Mi IO binding can communicate 
 
 # Mi IO Devices
 
-Currently the miio binding supports more than 290 different models.
+Currently the miio binding supports more than 330 different models.
 
-| Device                       | ThingType        | Device Model           | Supported | Remark     |
-|------------------------------|------------------|------------------------|-----------|------------|
-| AUX Smart Air Conditioner    | miio:unsupported | aux.aircondition.v1    | No        |            |
-| Qingping Air Monitor Lite    | miio:basic       | [cgllc.airm.cgdn1](#cgllc-airm-cgdn1) | Yes       | Identified manual actions for execution<br />`action{"did":"settings-set-start-time","siid":9,"aiid":2,"in":[2.0]}`<br />`action{"did":"settings-set-end-time","siid":9,"aiid":3,"in":[3.0]}`<br />`action{"did":"settings-set-frequency","siid":9,"aiid":4,"in":[4.0]}`<br />`action{"did":"settings-set-screen-off","siid":9,"aiid":5,"in":[5.0]}`<br />`action{"did":"settings-set-device-off","siid":9,"aiid":6,"in":[6.0]}`<br />`action{"did":"settings-set-temp-unit","siid":9,"aiid":7,"in":[7.0]}`<br />Please test and feedback if they are working to they can be linked to a channel. |
-| Mi Multifunction Air Monitor | miio:basic       | [cgllc.airmonitor.b1](#cgllc-airmonitor-b1) | Yes       |            |
-| Qingping Air Monitor         | miio:basic       | [cgllc.airmonitor.s1](#cgllc-airmonitor-s1) | Yes       |            |
-| Mi Universal Remote          | miio:unsupported | chuangmi.ir.v2         | No        |            |
-| Mi Smart Power Plug 2 (Wi-Fi and Bluetooth Gateway) | miio:basic       | [chuangmi.plug.212a01](#chuangmi-plug-212a01) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Plug WiFi           | miio:basic       | [chuangmi.plug.hmi205](#chuangmi-plug-hmi205) | Yes       |            |
-| Mi Smart Plug (WiFi)         | miio:basic       | [chuangmi.plug.hmi206](#chuangmi-plug-hmi206) | Yes       |            |
-| Mi Smart Wi-Fi Plug (Bluetooth Gateway) | miio:basic       | [chuangmi.plug.hmi208](#chuangmi-plug-hmi208) | Yes       |            |
-| Mi Plug Mini                 | miio:basic       | [chuangmi.plug.m1](#chuangmi-plug-m1) | Yes       |            |
-| Mi Smart Plug (Wi-Fi) Basic  | miio:basic       | [chuangmi.plug.m3](#chuangmi-plug-m3) | Yes       |            |
-| Mi Smart Power Plug          | miio:basic       | [chuangmi.plug.v1](#chuangmi-plug-v1) | Yes       |            |
-| Mi Smart Power Plug v2       | miio:basic       | [chuangmi.plug.v2](#chuangmi-plug-v2) | Yes       |            |
-| MIJIA Smart  Plug Enhanced   | miio:basic       | [chuangmi.plug.v3](#chuangmi-plug-v3) | Yes       |            |
-| Mi Remote                    | miio:unsupported | chuangmi.remote.v2     | No        |            |
-| Mi IH Rice Cooker            | miio:unsupported | chunmi.cooker.normal1  | No        |            |
-| Mi IH Rice Cooker            | miio:unsupported | chunmi.cooker.normal2  | No        |            |
-| Mi IH Rice Cooker 4L         | miio:unsupported | chunmi.cooker.normal4  | No        |            |
-| Mi IH Pressure Rice Cooker   | miio:unsupported | chunmi.cooker.press1   | No        |            |
-| Mi IH Pressure Rice Cooker   | miio:unsupported | chunmi.cooker.press2   | No        |            |
-| Gosund Smart Plug            | miio:basic       | [cuco.plug.cp1](#cuco-plug-cp1) | Yes       |            |
-| Mi Smart Antibacterial Humidifier | miio:basic       | [deerma.humidifier.jsq](#deerma-humidifier-jsq) | Yes       |            |
-| Mi S Smart humidifer         | miio:basic       | [deerma.humidifier.jsq1](#deerma-humidifier-jsq1) | Yes       |            |
-| Mi Smart Humidifier          | miio:basic       | [deerma.humidifier.mjjsq](#deerma-humidifier-mjjsq) | Yes       |            |
-| Mi Fresh Air Ventilator A1-150 | miio:basic       | [dmaker.airfresh.a1](#dmaker-airfresh-a1) | Yes       |            |
-| Mi Fresh Air Ventilator      | miio:basic       | [dmaker.airfresh.t2017](#dmaker-airfresh-t2017) | Yes       |            |
-| Mi Smart Standing Fan 2 Lite | miio:basic       | [dmaker.fan.1c](#dmaker-fan-1c) | Yes       |            |
-| Mi Smart Standing Fan 1X     | miio:basic       | [dmaker.fan.p5](#dmaker-fan-p5) | Yes       |            |
-| Mi Smart Standing Fan 1C     | miio:basic       | [dmaker.fan.p8](#dmaker-fan-p8) | Yes       |            |
-| Mi Smart Tower Fan           | miio:basic       | [dmaker.fan.p9](#dmaker-fan-p9) | Yes       |            |
-| Mi Smart Standing Fan 2      | miio:basic       | [dmaker.fan.p10](#dmaker-fan-p10) | Yes       |            |
-| Mi Robot Vacuum Mop 1C STYTJ01ZHM | miio:basic       | [dreame.vacuum.mc1808](#dreame-vacuum-mc1808) | Yes       | Identified manual actions for execution<br />`action{"did":"battery-start-charge","siid":2,"aiid":1,"in":[]}`<br />`action{"did":"vacuum-start-sweep","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"vacuum-stop-sweeping","siid":3,"aiid":2,"in":[]}`<br />`action{"did":"brush-cleaner-reset-brush-life","siid":26,"aiid":1,"in":[]}`<br />`action{"did":"filter-reset-filter-life","siid":27,"aiid":1,"in":[]}`<br />`action{"did":"brush-cleaner-reset-brush-life","siid":28,"aiid":1,"in":[]}`<br />`action{"did":"clean-start-clean","siid":18,"aiid":1,"in":[]}`<br />`action{"did":"clean-stop-clean","siid":18,"aiid":2,"in":[]}`<br />`action{"did":"remote-start-remote","siid":21,"aiid":1,"in":[1.0, 2.0]}`<br />`action{"did":"remote-stop-remote","siid":21,"aiid":2,"in":[]}`<br />`action{"did":"remote-exit-remote","siid":21,"aiid":3,"in":[]}`<br />`action{"did":"map-map-req","siid":23,"aiid":1,"in":[2.0]}`<br />`action{"did":"audio-position","siid":24,"aiid":1,"in":[]}`<br />`action{"did":"audio-set-voice","siid":24,"aiid":2,"in":[]}`<br />`action{"did":"audio-play-sound","siid":24,"aiid":3,"in":[]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Dreame Robot Vacuum-Mop F9   | miio:basic       | [dreame.vacuum.p2008](#dreame-vacuum-p2008) | Yes       | Identified manual actions for execution<br />`action{"did":"vacuum-start-sweep","siid":2,"aiid":1,"in":[]}`<br />`action{"did":"vacuum-stop-sweeping","siid":2,"aiid":2,"in":[]}`<br />`action{"did":"battery-start-charge","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"brush-cleaner-reset-brush-life","siid":9,"aiid":1,"in":[]}`<br />`action{"did":"brush-cleaner-reset-brush-life","siid":10,"aiid":1,"in":[]}`<br />`action{"did":"filter-reset-filter-life","siid":11,"aiid":1,"in":[]}`<br />`action{"did":"vacuum-extend-start-clean","siid":4,"aiid":1,"in":[10.0]}`<br />`action{"did":"vacuum-extend-stop-clean","siid":4,"aiid":2,"in":[]}`<br />`action{"did":"map-map-req","siid":6,"aiid":1,"in":[2.0]}`<br />`action{"did":"map-update-map","siid":6,"aiid":2,"in":[4.0]}`<br />`action{"did":"audio-position","siid":7,"aiid":1,"in":[]}`<br />`action{"did":"audio-play-sound","siid":7,"aiid":2,"in":[]}`<br />`action{"did":"time-delete-timer","siid":8,"aiid":1,"in":[3.0]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Dreame Robot Vacuum D9       | miio:basic       | [dreame.vacuum.p2009](#dreame-vacuum-p2009) | Yes       | Identified manual actions for execution not linked in the database >`action{"did":"vacuum-extend-start-clean","siid":4,"aiid":1,"in":[10.0]}`<br />`action{"did":"vacuum-extend-stop-clean","siid":4,"aiid":2,"in":[]}`<br />`action{"did":"map-map-req","siid":6,"aiid":1,"in":[2.0]}`<br />`action{"did":"map-update-map","siid":6,"aiid":2,"in":[4.0]}`<br />`action{"did":"audio-position","siid":7,"aiid":1,"in":[]}`<br />`action{"did":"audio-play-sound","siid":7,"aiid":2,"in":[]}`<br />`action{"did":"time-delete-timer","siid":8,"aiid":1,"in":[3.0]}`<br /> |
-| Trouver Robot LDS Vacuum-Mop Finder | miio:basic       | [dreame.vacuum.p2036](#dreame-vacuum-p2036) | Yes       | Identified manual actions for execution not linked in the database >`action{"did":"vacuum-extend-start-clean","siid":4,"aiid":1,"in":[10.0]}`<br />`action{"did":"vacuum-extend-stop-clean","siid":4,"aiid":2,"in":[]}`<br />`action{"did":"map-map-req","siid":6,"aiid":1,"in":[2.0]}`<br />`action{"did":"map-update-map","siid":6,"aiid":2,"in":[4.0]}`<br />`action{"did":"audio-position","siid":7,"aiid":1,"in":[]}`<br />`action{"did":"audio-play-sound","siid":7,"aiid":2,"in":[]}`<br />`action{"did":"time-delete-timer","siid":8,"aiid":1,"in":[3.0]}`<br /> |
-| Mi Robot Vacuum-Mop 2 Pro+   | miio:basic       | [dreame.vacuum.p2041o](#dreame-vacuum-p2041o) | Yes       | Identified manual actions for execution<br />`action{"did":"vacuum-start-sweep","siid":2,"aiid":1,"in":[]}`<br />`action{"did":"vacuum-stop-sweeping","siid":2,"aiid":2,"in":[]}`<br />`action{"did":"battery-start-charge","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"brush-cleaner-reset-brush-life","siid":9,"aiid":1,"in":[]}`<br />`action{"did":"brush-cleaner-reset-brush-life","siid":10,"aiid":1,"in":[]}`<br />`action{"did":"filter-reset-filter-life","siid":11,"aiid":1,"in":[]}`<br />`action{"did":"vacuum-extend-start-clean","siid":4,"aiid":1,"in":[10.0]}`<br />`action{"did":"vacuum-extend-stop-clean","siid":4,"aiid":2,"in":[]}`<br />`action{"did":"map-map-req","siid":6,"aiid":1,"in":[2.0]}`<br />`action{"did":"map-update-map","siid":6,"aiid":2,"in":[4.0]}`<br />`action{"did":"audio-position","siid":7,"aiid":1,"in":[]}`<br />`action{"did":"audio-play-sound","siid":7,"aiid":2,"in":[]}`<br />`action{"did":"time-delete-timer","siid":8,"aiid":1,"in":[3.0]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| MOVA Z500 Robot Vacuum and Mop Cleaner | miio:basic       | [dreame.vacuum.p2156o](#dreame-vacuum-p2156o) | Yes       | Identified manual actions for execution<br />`action{"did":"vacuum-start-sweep","siid":2,"aiid":1,"in":[]}`<br />`action{"did":"vacuum-stop-sweeping","siid":2,"aiid":2,"in":[]}`<br />`action{"did":"battery-start-charge","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"brush-cleaner-reset-brush-life","siid":9,"aiid":1,"in":[]}`<br />`action{"did":"brush-cleaner-reset-brush-life","siid":10,"aiid":1,"in":[]}`<br />`action{"did":"filter-reset-filter-life","siid":11,"aiid":1,"in":[]}`<br />`action{"did":"vacuum-extend-start-clean","siid":4,"aiid":1,"in":[10.0]}`<br />`action{"did":"vacuum-extend-stop-clean","siid":4,"aiid":2,"in":[]}`<br />`action{"did":"map-map-req","siid":6,"aiid":1,"in":[2.0]}`<br />`action{"did":"map-update-map","siid":6,"aiid":2,"in":[4.0]}`<br />`action{"did":"audio-position","siid":7,"aiid":1,"in":[]}`<br />`action{"did":"audio-play-sound","siid":7,"aiid":2,"in":[]}`<br />`action{"did":"time-delete-timer","siid":8,"aiid":1,"in":[3.0]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| MOVA L600 Robot Vacuum and Mop Cleaner | miio:basic       | [dreame.vacuum.p2157](#dreame-vacuum-p2157) | Yes       | Identified manual actions for execution not linked in the database >`action{"did":"vacuum-extend-start-clean","siid":4,"aiid":1,"in":[10.0]}`<br />`action{"did":"vacuum-extend-stop-clean","siid":4,"aiid":2,"in":[]}`<br />`action{"did":"map-map-req","siid":6,"aiid":1,"in":[2.0]}`<br />`action{"did":"map-update-map","siid":6,"aiid":2,"in":[4.0]}`<br />`action{"did":"audio-position","siid":7,"aiid":1,"in":[]}`<br />`action{"did":"audio-play-sound","siid":7,"aiid":2,"in":[]}`<br />`action{"did":"time-delete-timer","siid":8,"aiid":1,"in":[3.0]}`<br /> |
-| HUIZUO ARIES For Bedroom     | miio:basic       | [huayi.light.ari013](#huayi-light-ari013) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO ARIES For Living Room | miio:basic       | [huayi.light.aries](#huayi-light-aries) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO Fan Light             | miio:basic       | [huayi.light.fanwy](#huayi-light-fanwy) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO Fan Light(2020)       | miio:basic       | [huayi.light.fanwy2](#huayi-light-fanwy2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO PEGASUS For Living Room | miio:basic       | [huayi.light.peg091](#huayi-light-peg091) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO PEGASUS For Bedroom   | miio:basic       | [huayi.light.peg093](#huayi-light-peg093) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO PISCES For Bedroom    | miio:basic       | [huayi.light.pis123](#huayi-light-pis123) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO PISCES For Living Room | miio:basic       | [huayi.light.pisces](#huayi-light-pisces) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO TAURUS For Bedroom    | miio:basic       | [huayi.light.tau023](#huayi-light-tau023) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO TAURUS For Living Room | miio:basic       | [huayi.light.taurus](#huayi-light-taurus) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO VIRGO For Bedroom     | miio:basic       | [huayi.light.vir063](#huayi-light-vir063) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO VIRGO For Living Room | miio:basic       | [huayi.light.virgo](#huayi-light-virgo) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO Ceiling Light         | miio:basic       | [huayi.light.wy](#huayi-light-wy) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO LIANGCHEN(BLE Mesh)   | miio:basic       | [huayi.light.wy200](#huayi-light-wy200) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO SAG Downlight (BLE Mesh) | miio:basic       | [huayi.light.wy201](#huayi-light-wy201) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO Bulb (BLE Mesh)       | miio:basic       | [huayi.light.wy202](#huayi-light-wy202) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO YONG Downlight (BLE Mesh) | miio:basic       | [huayi.light.wy203](#huayi-light-wy203) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| huayi.light.wy204            | miio:basic       | [huayi.light.wy204](#huayi-light-wy204) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO Heating Lamp          | miio:basic       | [huayi.light.wyheat](#huayi-light-wyheat) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| HUIZUO ZIWEI Ceiling Lamp    | miio:basic       | [huayi.light.zw131](#huayi-light-zw131) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| MiJia Rice Cooker            | miio:unsupported | hunmi.cooker.normal3   | No        |            |
-| Jinxing Smart Air Conditioner | miio:unsupported | idelan.aircondition.v1 | No        |            |
-| Aqara Wall Switch(No Neutral, Single Rocker) | miio:unsupported | lumi.ctrl_neutral1.v1  | No        |            |
-| Aqara Wall Switch (No Neutral, Double Rocker) | miio:unsupported | lumi.ctrl_neutral2.v1  | No        |            |
-| Xiaomiyoupin Curtain Controller (Wi-Fi) | miio:basic       | [lumi.curtain.hagl05](#lumi-curtain-hagl05) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Air Purifier virtual      | miio:basic       | [lumi.gateway.mgl03](#lumi-gateway-mgl03) | Yes       | Used to control the gateway itself. Use the mihome binding to control devices connected to the Xiaomi gateway.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi smart Home Gateway Hub v1 | miio:basic       | [lumi.gateway.v1](#lumi-gateway-v1) | Yes       | Used to control the gateway itself. Use the mihome binding to control devices connected to the Xiaomi gateway.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi smart Home GatewayHub v2  | miio:basic       | [lumi.gateway.v2](#lumi-gateway-v2) | Yes       | Used to control the gateway itself. Use the mihome binding to control devices connected to the Xiaomi gateway.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi mart Home Gateway Hub v3  | miio:basic       | [lumi.gateway.v3](#lumi-gateway-v3) | Yes       | Used to control the gateway itself. Use the mihome binding to control devices connected to the Xiaomi gateway.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Midea AC-i Youth             | miio:unsupported | midea.aircondition.v1  | No        |            |
-| Midea Air Conditioner v2     | miio:unsupported | midea.aircondition.v2  | No        |            |
-| Midea AC-Cool Golden         | miio:unsupported | midea.aircondition.xa1 | No        |            |
-| Mi Robot Vacuum-Mop Essential | miio:basic       | [mijia.vacuum.v2](#mijia-vacuum-v2) | Yes       | This device may be overwhelmed if refresh is too frequent, slowing down the responses. Suggest to increase refresh time to 120 seconds |
-| Mijia Smart Pet Water Dispenser | miio:basic       | [mmgg.pet_waterer.s1](#mmgg-pet_waterer-s1) | Yes       | Identified manual actions for execution<br />`action{"did":"filter-reset-filter-life","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"filter-cotton-reset-cotton-life","siid":5,"aiid":1,"in":[]}`<br />`action{"did":"remain-clean-time-reset-clean-time","siid":6,"aiid":1,"in":[]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mijia Smart Pet Water Dispenser | miio:basic       | [mmgg.pet_waterer.s2](#mmgg-pet_waterer-s2) | Yes       | Identified manual actions for execution<br />`action{"did":"filter-reset-filter-life","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"filter-cotton-reset-cotton-life","siid":5,"aiid":1,"in":[]}`<br />`action{"did":"remain-clean-time-reset-clean-time","siid":6,"aiid":1,"in":[]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mijia Smart Pet Water Dispenser | miio:basic       | [mmgg.pet_waterer.s3](#mmgg-pet_waterer-s3) | Yes       | Identified manual actions for execution<br />`action{"did":"filter-reset-filter-life","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"filter-cotton-reset-cotton-life","siid":5,"aiid":1,"in":[]}`<br />`action{"did":"remain-clean-time-reset-clean-time","siid":6,"aiid":1,"in":[]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| XIAOWAN Smart Pet Water Dispenser | miio:basic       | [mmgg.pet_waterer.s4](#mmgg-pet_waterer-s4) | Yes       | Identified manual actions for execution<br />`action{"did":"filter-reset-filter-life","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"filter-cotton-reset-cotton-life","siid":5,"aiid":1,"in":[]}`<br />`action{"did":"remain-clean-time-reset-clean-time","siid":6,"aiid":1,"in":[]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| MR.BOND                      | miio:basic       | [mrbond.airer.m1pro](#mrbond-airer-m1pro) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| MR.BOND                      | miio:basic       | [mrbond.airer.m1s](#mrbond-airer-m1s) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| MR.BOND                      | miio:basic       | [mrbond.airer.m1super](#mrbond-airer-m1super) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| WIDETECH WDH318EFW1 Internet Dehumidifier | miio:basic       | [nwt.derh.wdh318efw1](#nwt-derh-wdh318efw1) | Yes       |            |
-| Philips Zhirui Ceiling Lamp Bedroom 40W | miio:basic       | [philips.light.bceiling1](#philips-light-bceiling1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Philips Zhirui Ceiling Lamp Bedroom 28W | miio:basic       | [philips.light.bceiling2](#philips-light-bceiling2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Philips ZhiRui E27 bulb      | miio:basic       | [philips.light.bulb](#philips-light-bulb) | Yes       |            |
-| Philips ZhiRui E14 candle lamp Frosted version | miio:basic       | [philips.light.candle](#philips-light-candle) | Yes       |            |
-| Philips ZhiRui E14 candle lamp crystal version | miio:basic       | [philips.light.candle2](#philips-light-candle2) | Yes       |            |
-| Mijia Philips Color Bulb     | miio:basic       | [philips.light.cbulb](#philips-light-cbulb) | Yes       |            |
-| Philips Light                | miio:basic       | [philips.light.cbulbs](#philips-light-cbulbs) | Yes       |            |
-| Philips connected ceiling    | miio:basic       | [philips.light.ceiling](#philips-light-ceiling) | Yes       |            |
-| Philips Light                | miio:basic       | [philips.light.dcolor](#philips-light-dcolor) | Yes       |            |
-| ZhiRui dimmable downlight    | miio:basic       | [philips.light.dlight](#philips-light-dlight) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Philips ZhiRui downlight     | miio:basic       | [philips.light.downlight](#philips-light-downlight) | Yes       |            |
-| Philips Wi-Fi bulb E27 White | miio:basic       | [philips.light.hbulb](#philips-light-hbulb) | Yes       |            |
-| Philips ZhiYi Ceiling lamp FL 40W | miio:basic       | [philips.light.lnblight1](#philips-light-lnblight1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Philips ZhiYi Ceiling lamp FL 28W | miio:basic       | [philips.light.lnblight2](#philips-light-lnblight2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Philips ZhiYi Ceiling lamp FL 80W | miio:basic       | [philips.light.lnlrlight](#philips-light-lnlrlight) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Philips Zhirui Ceiling Lamp Living room 80W | miio:basic       | [philips.light.lrceiling](#philips-light-lrceiling) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Zhirui Ceiling Lamp Nordic 80W | miio:basic       | [philips.light.mceil](#philips-light-mceil) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Zhirui Ceiling Lamp Nordic 40W | miio:basic       | [philips.light.mceilm](#philips-light-mceilm) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Zhirui Ceiling Lamp Nordic 28W | miio:basic       | [philips.light.mceils](#philips-light-mceils) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Philips Smart Lamp           | miio:basic       | [philips.light.mono1](#philips-light-mono1) | Yes       |            |
-| Philips ZhiRui bedside lamp  | miio:basic       | [philips.light.moonlight](#philips-light-moonlight) | Yes       |            |
-| Zhirui Ceiling Lamp Black 80W | miio:basic       | [philips.light.obceil](#philips-light-obceil) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-|  Zhirui Ceiling Lamp Black 40W | miio:basic       | [philips.light.obceim](#philips-light-obceim) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Zhirui Ceiling Lamp Black 28W | miio:basic       | [philips.light.obceis](#philips-light-obceis) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mijia Philips Study Desk Lamp | miio:basic       | [philips.light.rwread](#philips-light-rwread) | Yes       |            |
-| Zhirui Ceiling Lamp Starry 80W | miio:basic       | [philips.light.sceil](#philips-light-sceil) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Zhirui Ceiling Lamp Starry 40W | miio:basic       | [philips.light.sceilm](#philips-light-sceilm) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Zhirui Ceiling Lamp Starry 28W | miio:basic       | [philips.light.sceils](#philips-light-sceils) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Philips EyeCare connected desk lamp gen2. | miio:basic       | [philips.light.sread1](#philips-light-sread1) | Yes       |            |
-| Mijia Philips Desk Lamp 2S   | miio:basic       | [philips.light.sread2](#philips-light-sread2) | Yes       |            |
-| Philips connected lights     | miio:basic       | [philips.light.virtual](#philips-light-virtual) | Yes       |            |
-| Zhirui Ceiling Lamp Gorgeous 80W | miio:basic       | [philips.light.xzceil](#philips-light-xzceil) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Zhirui Ceiling Lamp Gorgeous 40W | miio:basic       | [philips.light.xzceim](#philips-light-xzceim) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Zhirui Ceiling Lamp Gorgeous 28W | miio:basic       | [philips.light.xzceis](#philips-light-xzceis) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Philips ZhiYi ceiling lamp   | miio:basic       | [philips.light.zyceiling](#philips-light-zyceiling) | Yes       |            |
-| Philips ZhiYi desk lamp      | miio:basic       | [philips.light.zysread](#philips-light-zysread) | Yes       |            |
-| Philips ZhiYi strip          | miio:basic       | [philips.light.zystrip](#philips-light-zystrip) | Yes       |            |
-| CHINGMI Smart Power Strip v1 | miio:basic       | [qmi.powerstrip.v1](#qmi-powerstrip-v1) | Yes       |            |
-| Rockrobo Xiaowa Sweeper v2   | miio:unsupported | roborock.sweeper.e2v2  | No        |            |
-| Rockrobo Xiaowa Sweeper v3   | miio:unsupported | roborock.sweeper.e2v3  | No        |            |
-| Roborock S6 Pure             | miio:vacuum      | [roborock.vacuum.a08](#roborock-vacuum-a08) | Yes       |            |
-| Roborock T7 Pro              | miio:vacuum      | [roborock.vacuum.a09](#roborock-vacuum-a09) | Yes       |            |
-| Roborock S6 MaxV             | miio:vacuum      | [roborock.vacuum.a10](#roborock-vacuum-a10) | Yes       |            |
-| Roborock T7                  | miio:vacuum      | [roborock.vacuum.a11](#roborock-vacuum-a11) | Yes       |            |
-| Roborock T7S                 | miio:vacuum      | [roborock.vacuum.a14](#roborock-vacuum-a14) | Yes       |            |
-| Roborock S7                  | miio:vacuum      | [roborock.vacuum.a15](#roborock-vacuum-a15) | Yes       |            |
-| Roborock S4 Max              | miio:vacuum      | [roborock.vacuum.a19](#roborock-vacuum-a19) | Yes       |            |
-| Roborock T7S Plus            | miio:vacuum      | [roborock.vacuum.a23](#roborock-vacuum-a23) | Yes       |            |
-| Xiaowa C1                    | miio:vacuum      | [roborock.vacuum.c1](#roborock-vacuum-c1) | Yes       |            |
-| Roborock Xiaowa E Series Vacuum v2 | miio:unsupported | roborock.vacuum.e2     | No        |            |
-| Mi Robot Vacuum 1S           | miio:vacuum      | [roborock.vacuum.m1s](#roborock-vacuum-m1s) | Yes       |            |
-| Roborock P5                  | miio:vacuum      | [roborock.vacuum.p5](#roborock-vacuum-p5) | Yes       |            |
-| Roborock S4                  | miio:vacuum      | [roborock.vacuum.s4](#roborock-vacuum-s4) | Yes       |            |
-| Roborock Vacuum S4v2         | miio:vacuum      | [roborock.vacuum.s4v2](#roborock-vacuum-s4v2) | Yes       |            |
-| Roborock S5                  | miio:vacuum      | [roborock.vacuum.s5](#roborock-vacuum-s5) | Yes       |            |
-| Roborock S5 Max              | miio:vacuum      | [roborock.vacuum.s5e](#roborock-vacuum-s5e) | Yes       |            |
-| Roborock S6                  | miio:vacuum      | [roborock.vacuum.s6](#roborock-vacuum-s6) | Yes       |            |
-| Roborock T4                  | miio:vacuum      | [roborock.vacuum.t4](#roborock-vacuum-t4) | Yes       |            |
-| Roborock Vacuum T4 v2        | miio:vacuum      | [roborock.vacuum.t4v2](#roborock-vacuum-t4v2) | Yes       |            |
-| Roborock Vacuum T4 v3        | miio:vacuum      | [roborock.vacuum.t4v3](#roborock-vacuum-t4v3) | Yes       |            |
-| Roborock T6                  | miio:vacuum      | [roborock.vacuum.t6](#roborock-vacuum-t6) | Yes       |            |
-| Roborock Vacuum T6 v2        | miio:vacuum      | [roborock.vacuum.t6v2](#roborock-vacuum-t6v2) | Yes       |            |
-| Roborock Vacuum T6 v3        | miio:vacuum      | [roborock.vacuum.t6v3](#roborock-vacuum-t6v3) | Yes       |            |
-| Roborock Vacuum T7           | miio:vacuum      | [roborock.vacuum.t7](#roborock-vacuum-t7) | Yes       |            |
-| Roborock Vacuum T7p          | miio:vacuum      | [roborock.vacuum.t7p](#roborock-vacuum-t7p) | Yes       |            |
-| Roborock Vacuum T7 v2        | miio:vacuum      | [roborock.vacuum.t7pv2](#roborock-vacuum-t7pv2) | Yes       |            |
-| Roborock Vacuum T7 v3        | miio:vacuum      | [roborock.vacuum.t7pv3](#roborock-vacuum-t7pv3) | Yes       |            |
-| Roborock Vacuum T7 v2        | miio:vacuum      | [roborock.vacuum.t7v2](#roborock-vacuum-t7v2) | Yes       |            |
-| Roborock Vacuum T7 v3        | miio:vacuum      | [roborock.vacuum.t7v3](#roborock-vacuum-t7v3) | Yes       |            |
-| Roborock Vacuum S6           | miio:vacuum      | [rockrobo.vacuum.s6](#rockrobo-vacuum-s6) | Yes       |            |
-| Mi Robot Vacuum              | miio:vacuum      | [rockrobo.vacuum.v1](#rockrobo-vacuum-v1) | Yes       |            |
-| PTX OneKey Switch (WIFI)     | miio:basic       | [090615.switch.xswitch01](#090615-switch-xswitch01) | Yes       |            |
-| PTX Twokey switch(wifi)      | miio:basic       | [090615.switch.xswitch02](#090615-switch-xswitch02) | Yes       |            |
-| PTX ThreeKey Switch (WIFI)   | miio:basic       | [090615.switch.xswitch03](#090615-switch-xswitch03) | Yes       |            |
-| SCISHARE Smart Capsule Coffee Machine | miio:basic       | [scishare.coffee.s1102](#scishare-coffee-s1102) | Yes       | This device does not allow for regular querying for the status. Hence the status is not updated for the action channels.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Xiaomi Scishare smart capsule coffee machine | miio:basic       | [scishare.coffee.s1301](#scishare-coffee-s1301) | Yes       | This device does not allow for regular querying for the status. Hence the status is not updated for the action channels.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Soocare Electric Toothbrush  | miio:unsupported | soocare.toothbrush.x3  | No        |            |
-| Viomi Internet refrigerator iLive(French style 462L) | miio:unsupported | viomi.fridge.v3        | No        |            |
-| Viomi Cleaning Robot V-RVCLM21B | miio:basic       | [viomi.vacuum.v6](#viomi-vacuum-v6) | Yes       |            |
-| Mi Robot Vacuum-Mop P        | miio:basic       | [viomi.vacuum.v7](#viomi-vacuum-v7) | Yes       |            |
-| Mi Robot Vacuum-Mop P        | miio:basic       | [viomi.vacuum.v8](#viomi-vacuum-v8) | Yes       |            |
-| Viomi S9                     | miio:basic       | [viomi.vacuum.v18](#viomi-vacuum-v18) | Yes       | Identified manual actions for execution<br />`action{"did":"vacuum-start-sweep","siid":2,"aiid":1,"in":[]}`<br />`action{"did":"vacuum-stop-sweeping","siid":2,"aiid":2,"in":[]}`<br />`action{"did":"vacuum-pause","siid":2,"aiid":3,"in":[]}`<br />`action{"did":"vacuum-start-charge","siid":2,"aiid":4,"in":[]}`<br />`action{"did":"vacuum-stop-massage","siid":2,"aiid":5,"in":[]}`<br />`action{"did":"vacuum-start-mop","siid":2,"aiid":6,"in":[]}`<br />`action{"did":"vacuum-start-only-sweep","siid":2,"aiid":7,"in":[]}`<br />`action{"did":"vacuum-start-sweep-mop","siid":2,"aiid":8,"in":[]}`<br />`action{"did":"viomi-vacuum-reset-map","siid":4,"aiid":7,"in":[]}`<br />`action{"did":"viomi-vacuum-set-calibration","siid":4,"aiid":10,"in":[]}`<br />`action{"did":"viomi-vacuum-reset-consumable","siid":4,"aiid":11,"in":[35.0]}`<br />`action{"did":"viomi-vacuum-set-room-clean","siid":4,"aiid":13,"in":[36.0, 37.0, 38.0]}`<br />`action{"did":"order-del","siid":5,"aiid":2,"in":[1.0]}`<br />`action{"did":"order-get","siid":5,"aiid":3,"in":[]}`<br />`action{"did":"point-zone-start-point-clean","siid":6,"aiid":1,"in":[]}`<br />`action{"did":"point-zone-pause-point-clean","siid":6,"aiid":2,"in":[]}`<br />`action{"did":"point-zone-start-zone-clean","siid":6,"aiid":5,"in":[]}`<br />`action{"did":"point-zone-pause-zone-clean","siid":6,"aiid":6,"in":[]}`<br />`action{"did":"map-upload-by-maptype","siid":7,"aiid":1,"in":[]}`<br />`action{"did":"map-upload-by-mapid","siid":7,"aiid":2,"in":[]}`<br />`action{"did":"map-set-cur-map","siid":7,"aiid":3,"in":[2.0, 15.0]}`<br />`action{"did":"map-del-map","siid":7,"aiid":5,"in":[2.0]}`<br />`action{"did":"map-rename-map","siid":7,"aiid":7,"in":[2.0, 4.0]}`<br />`action{"did":"map-arrange-room","siid":7,"aiid":8,"in":[2.0, 5.0, 6.0, 14.0]}`<br />`action{"did":"map-split-room","siid":7,"aiid":9,"in":[2.0, 5.0, 7.0, 8.0, 14.0]}`<br />`action{"did":"map-rename-room","siid":7,"aiid":10,"in":[2.0, 7.0, 9.0, 14.0]}`<br />`action{"did":"map-get-map-list","siid":7,"aiid":11,"in":[]}`<br />`action{"did":"map-get-cleaning-path","siid":7,"aiid":12,"in":[12.0]}`<br />`action{"did":"map-set-new-map","siid":7,"aiid":13,"in":[]}`<br />`action{"did":"map-deal-new-map","siid":7,"aiid":14,"in":[16.0]}`<br />`action{"did":"voice-find-device","siid":8,"aiid":2,"in":[]}`<br />`action{"did":"voice-download-voice","siid":8,"aiid":3,"in":[3.0, 7.0, 8.0]}`<br />`action{"did":"voice-get-downloadstatus","siid":8,"aiid":4,"in":[]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| VIOMI Internet electric water heater 1A (60L) | miio:basic       | [viomi.waterheater.e1](#viomi-waterheater-e1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Inverter Air Conditioner (1.5HP) | miio:basic       | [xiaomi.aircondition.ma1](#xiaomi-aircondition-ma1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Inverter Air Conditioner (1.5HP, China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.ma2](#xiaomi-aircondition-ma2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Vertical Air Conditioner (2HP) | miio:basic       | [xiaomi.aircondition.ma4](#xiaomi-aircondition-ma4) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Vertical Air Conditioner C1 (2HP / Inverter / China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.ma5](#xiaomi-aircondition-ma5) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Air Conditioner C1 (1.5HP / Conventional / China Energy Label Level 3) | miio:basic       | [xiaomi.aircondition.ma6](#xiaomi-aircondition-ma6) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Air Conditioner C1 (1HP / Inverter / China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.ma9](#xiaomi-aircondition-ma9) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Air Conditioner A (1HP / Inverter / China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mc1](#xiaomi-aircondition-mc1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Air Conditioner A (1.5HP / Inverter / China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mc2](#xiaomi-aircondition-mc2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Air Conditioner A (1HP / Inverter / China Energy Label Level <1) | miio:basic       | [xiaomi.aircondition.mc4](#xiaomi-aircondition-mc4) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Air Conditioner A (1.5HP / Inverter / China Energy Label Level <1) | miio:basic       | [xiaomi.aircondition.mc5](#xiaomi-aircondition-mc5) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Vertical Air Conditioner A (2HP / Inverter / China Energy Label Level <1) | miio:basic       | [xiaomi.aircondition.mc6](#xiaomi-aircondition-mc6) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Vertical Air Conditioner A (3HP / Inverter / China Energy Label Level <1) | miio:basic       | [xiaomi.aircondition.mc7](#xiaomi-aircondition-mc7) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Ultra Electricity Saving Air Conditioner(1.5HP/Inverter/New China Energy Label Level 3) | miio:basic       | [xiaomi.aircondition.mc8](#xiaomi-aircondition-mc8) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Ultra Electricity Saving Vertical Air Conditioner(2HP/Inverter/New China Energy Label Level 3) | miio:basic       | [xiaomi.aircondition.mc9](#xiaomi-aircondition-mc9) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Ultra Electricity Saving Vertical Air Conditioner (2HP/Inverter/New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.c10](#xiaomi-aircondition-c10) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Ultra Electricity Saving Vertical Air Conditioner (3HP/Inverter/New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.c11](#xiaomi-aircondition-c11) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Air Conditioner C (1HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mh1](#xiaomi-aircondition-mh1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Air Conditioner C (1.5HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mh2](#xiaomi-aircondition-mh2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Ultra Electricity Saving Air Conditioner(1HP/Inverter/New China Energy Label Level 3) | miio:basic       | [xiaomi.aircondition.mh3](#xiaomi-aircondition-mh3) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Air Conditioner X (1HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt1](#xiaomi-aircondition-mt1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Air Conditioner X (1.5HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt2](#xiaomi-aircondition-mt2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Gentle Breeze Air Conditioner (1HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt3](#xiaomi-aircondition-mt3) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Gentle Breeze Air Conditioner (1.5HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt4](#xiaomi-aircondition-mt4) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Gentle Breeze Vertical Air Conditioner (3HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt5](#xiaomi-aircondition-mt5) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Ultra Electricity Saving Air Conditioner (1HP/Inverter/New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt7](#xiaomi-aircondition-mt7) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Ultra Electricity Saving Air Conditioner (1.5HP/Inverter/New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt8](#xiaomi-aircondition-mt8) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Wi-Fi Repeater 2          | miio:unsupported | xiaomi.repeater.v2     | No        |            |
-| Mi Network Speaker           | miio:unsupported | xiaomi.wifispeaker.v1  | No        |            |
-| Uclean Smart Toilet Seat     | miio:basic       | [xjx.toilet.pro](#xjx-toilet-pro) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Uclean smart toilet pure     | miio:basic       | [xjx.toilet.pure](#xjx-toilet-pure) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Uclean smart toilet relax    | miio:basic       | [xjx.toilet.relax](#xjx-toilet-relax) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Whale Spout Smart Toilet Zero | miio:basic       | [xjx.toilet.zero](#xjx-toilet-zero) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Yeelight Smart Bath Heater   | miio:unsupported | yeelight.bhf_light.v2  | No        |            |
-| Yeelight Smart Bath Heater Pro | miio:basic       | [yeelink.bhf_light.v1](#yeelink-bhf_light-v1) | Yes       |            |
-| Yeelight Smart Bath Heater   | miio:basic       | [yeelink.bhf_light.v2](#yeelink-bhf_light-v2) | Yes       |            |
-| Mi Bedside Lamp              | miio:basic       | [yeelink.light.bslamp1](#yeelink-light-bslamp1) | Yes       |            |
-| Mi Bedside Lamp 2            | miio:basic       | [yeelink.light.bslamp2](#yeelink-light-bslamp2) | Yes       |            |
-| Yeelight Bedside Lamp II     | miio:basic       | [yeelink.light.bslamp3](#yeelink-light-bslamp3) | Yes       |            |
-| Yeelight Ceiling Light       | miio:basic       | [yeelink.light.ceiling1](#yeelink-light-ceiling1) | Yes       |            |
-| Yeelight Ceiling Light SE    | miio:basic       | [yeelink.light.ceiling2](#yeelink-light-ceiling2) | Yes       |            |
-| Yeelight LED Ceiling Light   | miio:basic       | [yeelink.light.ceiling3](#yeelink-light-ceiling3) | Yes       |            |
-| Yeelight LED Ceiling Light   | miio:basic       | [yeelink.light.ceiling4](#yeelink-light-ceiling4) | Yes       |            |
-| Yeelight LED Ceiling Ambi Lamp | miio:basic       | [yeelink.light.ceiling4.ambi](#yeelink-light-ceiling4-ambi) | Yes       |            |
-| Mi LED Ceiling Light         | miio:basic       | [yeelink.light.ceiling5](#yeelink-light-ceiling5) | Yes       |            |
-| Yeelight HaoShi LED Ceiling Lamp Pro | miio:basic       | [yeelink.light.ceiling6](#yeelink-light-ceiling6) | Yes       |            |
-| Yeelight Haoshi Ceiling Lamp | miio:basic       | [yeelink.light.ceiling7](#yeelink-light-ceiling7) | Yes       |            |
-| LED Ceiling Light Crystal Plus | miio:basic       | [yeelink.light.ceiling8](#yeelink-light-ceiling8) | Yes       |            |
-| Yeelight HaoShi LED Ceiling Lamp Pro | miio:basic       | [yeelink.light.ceiling9](#yeelink-light-ceiling9) | Yes       |            |
-| Yeelight Crystal Pendant Lamp | miio:basic       | [yeelink.light.ceiling10](#yeelink-light-ceiling10) | Yes       |            |
-| Yeelight LED Ceiling Ambi Lamp | miio:basic       | [yeelink.light.ceiling10.ambi](#yeelink-light-ceiling10-ambi) | Yes       |            |
-| Yeelight Ceiling Light 320 1S | miio:basic       | [yeelink.light.ceiling11](#yeelink-light-ceiling11) | Yes       |            |
-| Yeelight stylized Ceiling Light  Pro | miio:basic       | [yeelink.light.ceiling12](#yeelink-light-ceiling12) | Yes       |            |
-| Yeelight Ceiling Light       | miio:basic       | [yeelink.light.ceiling13](#yeelink-light-ceiling13) | Yes       |            |
-| Yeelight Ceiling Light Mini  | miio:basic       | [yeelink.light.ceiling14](#yeelink-light-ceiling14) | Yes       |            |
-| Yeelight Ceiling Light 480 1S | miio:basic       | [yeelink.light.ceiling15](#yeelink-light-ceiling15) | Yes       |            |
-| Yeelight Xingyu Ceiling Light | miio:basic       | [yeelink.light.ceiling16](#yeelink-light-ceiling16) | Yes       |            |
-| Yeelight ShaoHua Celing Light | miio:basic       | [yeelink.light.ceiling17](#yeelink-light-ceiling17) | Yes       |            |
-| Yeelight Ceiling Light Pro   | miio:basic       | [yeelink.light.ceiling18](#yeelink-light-ceiling18) | Yes       |            |
-| Yeelight Ceiling Light Pro   | miio:basic       | [yeelink.light.ceiling19](#yeelink-light-ceiling19) | Yes       |            |
-| Yeelight LED Ceiling Ambi Lamp | miio:basic       | [yeelink.light.ceiling19.ambi](#yeelink-light-ceiling19-ambi) | Yes       |            |
-| Yeelight Ceiling Light       | miio:basic       | [yeelink.light.ceiling20](#yeelink-light-ceiling20) | Yes       |            |
-| Yeelight LED Ceiling Ambi Lamp | miio:basic       | [yeelink.light.ceiling20.ambi](#yeelink-light-ceiling20-ambi) | Yes       |            |
-| Mi Smart LED Living Room Ceiling Light | miio:basic       | [yeelink.light.ceiling21](#yeelink-light-ceiling21) | Yes       |            |
-| Mi Smart LED Ceiling Light   | miio:basic       | [yeelink.light.ceiling22](#yeelink-light-ceiling22) | Yes       |            |
-| Mi Smart LED Ceiling Light (350mm) | miio:basic       | [yeelink.light.ceiling23](#yeelink-light-ceiling23) | Yes       |            |
-| Yeelight Color Bulb          | miio:basic       | [yeelink.light.color1](#yeelink-light-color1) | Yes       |            |
-| Yeelight LED Bulb (Color)    | miio:basic       | [yeelink.light.color2](#yeelink-light-color2) | Yes       |            |
-| Mi LED Smart Bulb (White and Color) | miio:basic       | [yeelink.light.color3](#yeelink-light-color3) | Yes       |            |
-| Yeelight LED Bulb 1S（Color）  | miio:basic       | [yeelink.light.color4](#yeelink-light-color4) | Yes       |            |
-| Mi Smart LED Bulb Essential (White and Color) | miio:basic       | [yeelink.light.color5](#yeelink-light-color5) | Yes       |            |
-| Yeelight Smart LED Bulb 1SE (color) | miio:basic       | [yeelink.light.colora](#yeelink-light-colora) | Yes       |            |
-| Yeelight LED Bulb (Tunable)  | miio:basic       | [yeelink.light.ct2](#yeelink-light-ct2) | Yes       |            |
-| Mi LED Desk Lamp             | miio:basic       | [yeelink.light.lamp1](#yeelink-light-lamp1) | Yes       |            |
-| Mi Smart LED Desk Lamp Pro   | miio:basic       | [yeelink.light.lamp2](#yeelink-light-lamp2) | Yes       |            |
-| Yeelight LED Lamp            | miio:basic       | [yeelink.light.lamp3](#yeelink-light-lamp3) | Yes       |            |
-| Mi LED Desk Lamp 1S          | miio:basic       | [yeelink.light.lamp4](#yeelink-light-lamp4) | Yes       |            |
-| Yeelight Smart Desk Lamp Prime | miio:basic       | [yeelink.light.lamp5](#yeelink-light-lamp5) | Yes       |            |
-| Yeelight                     | miio:basic       | [yeelink.light.lamp6](#yeelink-light-lamp6) | Yes       |            |
-| Yeelight LED Light Sensor Desk Lamp V1 | miio:basic       | [yeelink.light.lamp7](#yeelink-light-lamp7) | Yes       |            |
-| Yeelight                     | miio:basic       | [yeelink.light.lamp8](#yeelink-light-lamp8) | Yes       |            |
-| Yeelight Star LED Table Lamp | miio:basic       | [yeelink.light.lamp9](#yeelink-light-lamp9) | Yes       |            |
-| Yeelight Star Floor Lamp     | miio:basic       | [yeelink.light.lamp10](#yeelink-light-lamp10) | Yes       |            |
-| Yeelight Screen Light Bar    | miio:basic       | [yeelink.light.lamp15](#yeelink-light-lamp15) | Yes       |            |
-| Yeelight Bulb                | miio:basic       | [yeelink.light.mono1](#yeelink-light-mono1) | Yes       |            |
-| Yeelight White Bulb v2       | miio:basic       | [yeelink.light.mono2](#yeelink-light-mono2) | Yes       |            |
-| Yeelight LED Bulb 1S（Dimmable） | miio:basic       | [yeelink.light.mono4](#yeelink-light-mono4) | Yes       |            |
-| Yeelight LED Filament Bulb   | miio:basic       | [yeelink.light.mono5](#yeelink-light-mono5) | Yes       |            |
-| Yeelight Whiteglow Panel Light | miio:basic       | [yeelink.light.panel1](#yeelink-light-panel1) | Yes       |            |
-| Yeelight Lightstrip          | miio:basic       | [yeelink.light.strip1](#yeelink-light-strip1) | Yes       |            |
-| Yeelight Lightstrip Plus     | miio:basic       | [yeelink.light.strip2](#yeelink-light-strip2) | Yes       |            |
-| Yeelight Willow LED Lightstrip | miio:basic       | [yeelink.light.strip4](#yeelink-light-strip4) | Yes       |            |
-| Light Group (Mi & Yeelight)  | miio:basic       | [yeelink.light.virtual](#yeelink-light-virtual) | Yes       |            |
-| Yeelight Smart Dual Control Module | miio:basic       | [yeelink.switch.sw1](#yeelink-switch-sw1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Yeelight Smart Speaker       | miio:unsupported | yeelink.wifispeaker.v1 | No        |            |
-| Yilai Ceiling Light Aiyue 480 | miio:basic       | [yilai.light.ceiling1](#yilai-light-ceiling1) | Yes       |            |
-| Yilai Ceiling Lamp Hefeng 430 | miio:basic       | [yilai.light.ceiling2](#yilai-light-ceiling2) | Yes       |            |
-| Yilai Ceiling Lamp Hefeng Pro | miio:basic       | [yilai.light.ceiling3](#yilai-light-ceiling3) | Yes       |            |
-| Mi Water Purifier lx2        | miio:basic       | [yunmi.waterpuri.lx2](#yunmi-waterpuri-lx2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier (Under Counter) | miio:basic       | [yunmi.waterpuri.lx3](#yunmi-waterpuri-lx3) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier lx4        | miio:basic       | [yunmi.waterpuri.lx4](#yunmi-waterpuri-lx4) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier 1A/400G Pro | miio:basic       | [yunmi.waterpuri.lx5](#yunmi-waterpuri-lx5) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier (Under Counter) | miio:basic       | [yunmi.waterpuri.lx6](#yunmi-waterpuri-lx6) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier 500G/500G Pro | miio:basic       | [yunmi.waterpuri.lx7](#yunmi-waterpuri-lx7) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier 600G       | miio:basic       | [yunmi.waterpuri.lx8](#yunmi-waterpuri-lx8) | Yes       |            |
-| Mi Water Purifier D1         | miio:basic       | [yunmi.waterpuri.lx9](#yunmi-waterpuri-lx9) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier lx10       | miio:basic       | [yunmi.waterpuri.lx10](#yunmi-waterpuri-lx10) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier C1 (Triple Setting) | miio:basic       | [yunmi.waterpuri.lx11](#yunmi-waterpuri-lx11) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier S1         | miio:basic       | [yunmi.waterpuri.lx12](#yunmi-waterpuri-lx12) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier v1         | miio:basic       | [yunmi.waterpurifier.v1](#yunmi-waterpurifier-v1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier v2         | miio:basic       | [yunmi.waterpurifier.v2](#yunmi-waterpurifier-v2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier (Under sink) v3 | miio:basic       | [yunmi.waterpurifier.v3](#yunmi-waterpurifier-v3) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Water Purifier v4         | miio:basic       | [yunmi.waterpurifier.v4](#yunmi-waterpurifier-v4) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi PM2.5 Air Quality Monitor | miio:basic       | [zhimi.airmonitor.v1](#zhimi-airmonitor-v1) | Yes       |            |
-| Mi Air Purifier 2 (mini)     | miio:basic       | [zhimi.airpurifier.m1](#zhimi-airpurifier-m1) | Yes       |            |
-| Mi Air Purifier 2            | miio:basic       | [zhimi.airpurifier.m2](#zhimi-airpurifier-m2) | Yes       |            |
-| Mi Air Purifier 2S           | miio:basic       | [zhimi.airpurifier.ma1](#zhimi-airpurifier-ma1) | Yes       |            |
-| Mi Air Purifier 2S           | miio:basic       | [zhimi.airpurifier.ma2](#zhimi-airpurifier-ma2) | Yes       |            |
-| Mi Air Purifier 3            | miio:basic       | [zhimi.airpurifier.ma4](#zhimi-airpurifier-ma4) | Yes       | Identified manual actions for execution<br />`action{"did":"filter-reset-filter-life","siid":4,"aiid":1,"in":[]}`<br />`action{"did":"button-toggle","siid":8,"aiid":1,"in":[]}`<br />`action{"did":"button-toggle-mode","siid":8,"aiid":2,"in":[]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Air Purifier 2S           | miio:basic       | [zhimi.airpurifier.mb1](#zhimi-airpurifier-mb1) | Yes       |            |
-| Mi Air Purifier 3/3H         | miio:basic       | [zhimi.airpurifier.mb3](#zhimi-airpurifier-mb3) | Yes       | Identified manual actions for execution<br />`action{"did":"filter-reset-filter-life","siid":4,"aiid":1,"in":[]}`<br />`action{"did":"button-toggle","siid":8,"aiid":1,"in":[]}`<br />`action{"did":"button-toggle-mode","siid":8,"aiid":2,"in":[]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Air Purifier 3C           | miio:basic       | [zhimi.airpurifier.mb4](#zhimi-airpurifier-mb4) | Yes       | Specified action for filter reset <br />`action{"did":"filter-reset-filter-life","siid":4,"aiid":1,"in":[3.0]}`<br />However, this has not been successfully tested yet. |
-| Mi Air Purifier 2S           | miio:basic       | [zhimi.airpurifier.mc1](#zhimi-airpurifier-mc1) | Yes       |            |
-| Mi Air Purifier 2H           | miio:basic       | [zhimi.airpurifier.mc2](#zhimi-airpurifier-mc2) | Yes       |            |
-| Mi Air Purifier Super        | miio:basic       | [zhimi.airpurifier.sa1](#zhimi-airpurifier-sa1) | Yes       |            |
-| Mi Air Purifier MAX / MAX Pro | miio:basic       | [zhimi.airpurifier.sa2](#zhimi-airpurifier-sa2) | Yes       |            |
-| Mi Air Purifier v1           | miio:basic       | [zhimi.airpurifier.v1](#zhimi-airpurifier-v1) | Yes       |            |
-| Mi Air Purifier v2           | miio:basic       | [zhimi.airpurifier.v2](#zhimi-airpurifier-v2) | Yes       |            |
-| Mi Air Purifier v3           | miio:basic       | [zhimi.airpurifier.v3](#zhimi-airpurifier-v3) | Yes       |            |
-| Mi Air Purifier v5           | miio:basic       | [zhimi.airpurifier.v5](#zhimi-airpurifier-v5) | Yes       |            |
-| Mi Air Purifier Pro v6       | miio:basic       | [zhimi.airpurifier.v6](#zhimi-airpurifier-v6) | Yes       |            |
-| Mi Air Purifier Pro v7       | miio:basic       | [zhimi.airpurifier.v7](#zhimi-airpurifier-v7) | Yes       |            |
-| Mi Air Purifier Pro H        | miio:basic       | [zhimi.airpurifier.vb2](#zhimi-airpurifier-vb2) | Yes       |            |
-| Mi Air Purifier virtual      | miio:unsupported | zhimi.airpurifier.virtual | No        |            |
-| Mi Air Purifier 2(Virtual)   | miio:unsupported | zhimi.airpurifier.vtl_m1 | No        |            |
-| Smartmi Air Purifier         | miio:basic       | [zhimi.airpurifier.za1](#zhimi-airpurifier-za1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Standing Fan              | miio:basic       | [zhimi.fan.sa1](#zhimi-fan-sa1) | Yes       |            |
-| Mi Smart Fan                 | miio:basic       | [zhimi.fan.v1](#zhimi-fan-v1) | Yes       |            |
-| Smartmi DC Pedestal Fan      | miio:basic       | [zhimi.fan.v2](#zhimi-fan-v2) | Yes       |            |
-| Smartmi DC Pedestal Fan      | miio:basic       | [zhimi.fan.v3](#zhimi-fan-v3) | Yes       |            |
-| Smartmi Inverter Pedestal Fan | miio:basic       | [zhimi.fan.za1](#zhimi-fan-za1) | Yes       |            |
-| Smartmi Standing Fan 2       | miio:basic       | [zhimi.fan.za3](#zhimi-fan-za3) | Yes       |            |
-| Smartmi Standing Fan 2S      | miio:basic       | [zhimi.fan.za4](#zhimi-fan-za4) | Yes       |            |
-| Smartmi Standing Fan 3       | miio:basic       | [zhimi.fan.za5](#zhimi-fan-za5) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Space Heater S      | miio:basic       | [zhimi.heater.ma2](#zhimi-heater-ma2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Baseboard Heater E  | miio:basic       | [zhimi.heater.ma3](#zhimi-heater-ma3) | Yes       | Identified manual actions for execution<br />`action{"did":"private-service-toggle-switch","siid":8,"aiid":1,"in":[]}`<br />Please test and feedback if they are working to they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Mi Smart Space Heater S      | miio:basic       | [zhimi.heater.mc2](#zhimi-heater-mc2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Smartmi Smart Fan            | miio:basic       | [zhimi.heater.na1](#zhimi-heater-na1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Smartmi Smart Fan Heater     | miio:basic       | [zhimi.heater.nb1](#zhimi-heater-nb1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Smartmi Radiant Heater Smart Version | miio:basic       | [zhimi.heater.za1](#zhimi-heater-za1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Smartmi Smart Convector Heater 1S | miio:basic       | [zhimi.heater.za2](#zhimi-heater-za2) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Smartmi Smart Convector Heater 1S | miio:basic       | [zhimi.heater.zb1](#zhimi-heater-zb1) | Yes       | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
-| Smartmi Evaporative Humidifier | miio:basic       | [zhimi.humidifier.ca1](#zhimi-humidifier-ca1) | Yes       |            |
-| Smartmi Evaporative Humidifer 2 | miio:basic       | [zhimi.humidifier.ca4](#zhimi-humidifier-ca4) | Yes       |            |
-| Smartmi Evaporative Humidifier | miio:basic       | [zhimi.humidifier.cb1](#zhimi-humidifier-cb1) | Yes       |            |
-| Smartmi Evaporative Humidifier | miio:basic       | [zhimi.humidifier.cb2](#zhimi-humidifier-cb2) | Yes       |            |
-| Smartmi Humidifier           | miio:basic       | [zhimi.humidifier.v1](#zhimi-humidifier-v1) | Yes       |            |
-| Mi AI Alarm                  | miio:unsupported | zimi.clock.myk01       | No        |            |
-| Mi Smart Power Strip         | miio:basic       | [zimi.powerstrip.v2](#zimi-powerstrip-v2) | Yes       |            |
+| Device                             | ThingType        | Device Model           | Supported    | Remark     |
+|------------------------------------|------------------|------------------------|--------------|------------|
+| AUX Smart Air Conditioner          | miio:unsupported | aux.aircondition.v1    | No           |            |
+| Mi Air Frying Pan                  | miio:basic       | [careli.fryer.maf01](#careli-fryer-maf01) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Fryer (3.5L)          | miio:basic       | [careli.fryer.maf02](#careli-fryer-maf02) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Air Frying Pan                  | miio:basic       | [careli.fryer.maf03](#careli-fryer-maf03) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Qingping Air Monitor Lite          | miio:basic       | [cgllc.airm.cgdn1](#cgllc-airm-cgdn1) | Yes          |            |
+| Mi Multifunction Air Monitor       | miio:basic       | [cgllc.airmonitor.b1](#cgllc-airmonitor-b1) | Yes          |            |
+| Qingping Air Monitor               | miio:basic       | [cgllc.airmonitor.s1](#cgllc-airmonitor-s1) | Yes          |            |
+| Mi Universal Remote                | miio:unsupported | chuangmi.ir.v2         | No           |            |
+| Mi Smart Power Plug 2 (Wi-Fi and Bluetooth Gateway) | miio:basic       | [chuangmi.plug.212a01](#chuangmi-plug-212a01) | Yes          |            |
+| Mi Smart Plug WiFi                 | miio:basic       | [chuangmi.plug.hmi205](#chuangmi-plug-hmi205) | Yes          |            |
+| Mi Smart Plug (WiFi)               | miio:basic       | [chuangmi.plug.hmi206](#chuangmi-plug-hmi206) | Yes          |            |
+| Mi Smart Wi-Fi Plug (Bluetooth Gateway) | miio:basic       | [chuangmi.plug.hmi208](#chuangmi-plug-hmi208) | Yes          |            |
+| Mi Plug Mini                       | miio:basic       | [chuangmi.plug.m1](#chuangmi-plug-m1) | Yes          |            |
+| Mi Smart Plug (Wi-Fi) Basic        | miio:basic       | [chuangmi.plug.m3](#chuangmi-plug-m3) | Yes          |            |
+| Mi Smart Power Plug                | miio:basic       | [chuangmi.plug.v1](#chuangmi-plug-v1) | Yes          |            |
+| Mi Smart Power Plug v2             | miio:basic       | [chuangmi.plug.v2](#chuangmi-plug-v2) | Yes          |            |
+| MIJIA Smart  Plug Enhanced         | miio:basic       | [chuangmi.plug.v3](#chuangmi-plug-v3) | Yes          |            |
+| Mi Remote                          | miio:unsupported | chuangmi.remote.v2     | No           |            |
+| Mi IH Rice Cooker                  | miio:unsupported | chunmi.cooker.normal1  | No           |            |
+| Mi IH Rice Cooker                  | miio:unsupported | chunmi.cooker.normal2  | No           |            |
+| Mi IH Rice Cooker 4L               | miio:unsupported | chunmi.cooker.normal4  | No           |            |
+| Mi IH Pressure Rice Cooker         | miio:unsupported | chunmi.cooker.press1   | No           |            |
+| Mi IH Pressure Rice Cooker         | miio:unsupported | chunmi.cooker.press2   | No           |            |
+| Gosund Smart Plug                  | miio:basic       | [cuco.plug.cp1](#cuco-plug-cp1) | Yes          |            |
+| Mi Smart Antibacterial Humidifier  | miio:basic       | [deerma.humidifier.jsq](#deerma-humidifier-jsq) | Yes          |            |
+| Mi S Smart Humidifer               | miio:basic       | [deerma.humidifier.jsq1](#deerma-humidifier-jsq1) | Yes          |            |
+| Mi Smart Antibacterial Humidifier  | miio:basic       | [deerma.humidifier.jsq5](#deerma-humidifier-jsq5) | Yes          |            |
+| Mi Smart Humidifer S               | miio:basic       | [deerma.humidifier.jsqs](#deerma-humidifier-jsqs) | Yes          |            |
+| Mi Smart Humidifier                | miio:basic       | [deerma.humidifier.mjjsq](#deerma-humidifier-mjjsq) | Yes          |            |
+| Mi Fresh Air Ventilator A1-150     | miio:basic       | [dmaker.airfresh.a1](#dmaker-airfresh-a1) | Yes          |            |
+| Mi Fresh Air Ventilator            | miio:basic       | [dmaker.airfresh.t2017](#dmaker-airfresh-t2017) | Yes          |            |
+| Mi Smart Standing Fan 2 Lite       | miio:basic       | [dmaker.fan.1c](#dmaker-fan-1c) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Standing Fan 1X           | miio:basic       | [dmaker.fan.p5](#dmaker-fan-p5) | Yes          |            |
+| Mi Smart Standing Fan 1C           | miio:basic       | [dmaker.fan.p8](#dmaker-fan-p8) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Tower Fan                 | miio:basic       | [dmaker.fan.p9](#dmaker-fan-p9) | Yes          |            |
+| Mi Smart Standing Fan 2            | miio:basic       | [dmaker.fan.p10](#dmaker-fan-p10) | Yes          |            |
+| Mi Smart Standing Fan Pro          | miio:basic       | [dmaker.fan.p15](#dmaker-fan-p15) | Yes          | Identified manual actions for execution<br />`action{"did":"off-delay-time-toggle","siid":3,"aiid":1,"in":[]}`<br />Please test and feedback if they are working so they can be linked to a channel. |
+| Mi Smart Standing Fan 2            | miio:basic       | [dmaker.fan.p18](#dmaker-fan-p18) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Robot Vacuum Mop 1C STYTJ01ZHM  | miio:basic       | [dreame.vacuum.mc1808](#dreame-vacuum-mc1808) | Yes          |            |
+| Dreame Robot Vacuum-Mop F9         | miio:basic       | [dreame.vacuum.p2008](#dreame-vacuum-p2008) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Dreame Robot Vacuum D9             | miio:basic       | [dreame.vacuum.p2009](#dreame-vacuum-p2009) | Yes          |            |
+| Dreame Bot W10                     | miio:basic       | [dreame.vacuum.p2027](#dreame-vacuum-p2027) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Dreame Bot Z10 Pro                 | miio:basic       | [dreame.vacuum.p2028](#dreame-vacuum-p2028) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Trouver Robot LDS Vacuum-Mop Finder | miio:basic       | [dreame.vacuum.p2036](#dreame-vacuum-p2036) | Yes          |            |
+| Mi Robot Vacuum-Mop 2 Pro+         | miio:basic       | [dreame.vacuum.p2041o](#dreame-vacuum-p2041o) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| MOVA Z500 Robot Vacuum and Mop Cleaner | miio:basic       | [dreame.vacuum.p2156o](#dreame-vacuum-p2156o) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| MOVA L600 Robot Vacuum and Mop Cleaner | miio:basic       | [dreame.vacuum.p2157](#dreame-vacuum-p2157) | Yes          |            |
+| Dreame Bot D9 Max                  | miio:basic       | [dreame.vacuum.p2259](#dreame-vacuum-p2259) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO ARIES For Bedroom           | miio:basic       | [huayi.light.ari013](#huayi-light-ari013) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO ARIES For Living Room       | miio:basic       | [huayi.light.aries](#huayi-light-aries) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO Fan Light                   | miio:basic       | [huayi.light.fanwy](#huayi-light-fanwy) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO Fan Light(2020)             | miio:basic       | [huayi.light.fanwy2](#huayi-light-fanwy2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO PEGASUS For Living Room     | miio:basic       | [huayi.light.peg091](#huayi-light-peg091) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO PEGASUS For Bedroom         | miio:basic       | [huayi.light.peg093](#huayi-light-peg093) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO PISCES For Bedroom          | miio:basic       | [huayi.light.pis123](#huayi-light-pis123) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO PISCES For Living Room      | miio:basic       | [huayi.light.pisces](#huayi-light-pisces) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO TAURUS For Bedroom          | miio:basic       | [huayi.light.tau023](#huayi-light-tau023) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO TAURUS For Living Room      | miio:basic       | [huayi.light.taurus](#huayi-light-taurus) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO VIRGO For Bedroom           | miio:basic       | [huayi.light.vir063](#huayi-light-vir063) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO VIRGO For Living Room       | miio:basic       | [huayi.light.virgo](#huayi-light-virgo) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO Ceiling Light               | miio:basic       | [huayi.light.wy](#huayi-light-wy) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO LIANGCHEN(BLE Mesh)         | miio:basic       | [huayi.light.wy200](#huayi-light-wy200) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO SAG Downlight (BLE Mesh)    | miio:basic       | [huayi.light.wy201](#huayi-light-wy201) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO Bulb (BLE Mesh)             | miio:basic       | [huayi.light.wy202](#huayi-light-wy202) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO YONG Downlight (BLE Mesh)   | miio:basic       | [huayi.light.wy203](#huayi-light-wy203) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| huayi.light.wy204                  | miio:basic       | [huayi.light.wy204](#huayi-light-wy204) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO Heating Lamp                | miio:basic       | [huayi.light.wyheat](#huayi-light-wyheat) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| HUIZUO ZIWEI Ceiling Lamp          | miio:basic       | [huayi.light.zw131](#huayi-light-zw131) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| MiJia Rice Cooker                  | miio:unsupported | hunmi.cooker.normal3   | No           |            |
+| Jinxing Smart Air Conditioner      | miio:unsupported | idelan.aircondition.v1 | No           |            |
+| IKEA E27 white spectrum opal       | miio:lumi        | [ikea.light.led1545g12](#ikea-light-led1545g12) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| IKEA E27 white spectrum clear      | miio:lumi        | [ikea.light.led1546g12](#ikea-light-led1546g12) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| IKEA E14 white spectrum            | miio:lumi        | [ikea.light.led1536g5](#ikea-light-led1536g5) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| IKEA GU10 white spectrum           | miio:lumi        | [ikea.light.led1537r6](#ikea-light-led1537r6) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| IKEA E27 warm white                | miio:lumi        | [ikea.light.led1623g12](#ikea-light-led1623g12) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| IKEA GU10 warm white               | miio:lumi        | [ikea.light.led1650r5](#ikea-light-led1650r5) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| IKEA E14 warm white                | miio:lumi        | [ikea.light.led1649c5](#ikea-light-led1649c5) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Aqara Wall Switch(No Neutral, Single Rocker) | miio:unsupported | lumi.ctrl_neutral1.v1  | No           |            |
+| Aqara Wall Switch (No Neutral, Double Rocker) | miio:unsupported | lumi.ctrl_neutral2.v1  | No           |            |
+| Xiaomiyoupin Curtain Controller (Wi-Fi) | miio:basic       | [lumi.curtain.hagl05](#lumi-curtain-hagl05) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Air Purifier virtual            | miio:gateway     | [lumi.gateway.mgl03](#lumi-gateway-mgl03) | Experimental | Used to control the gateway itself. Use the mihome binding to control devices connected to the Xiaomi gateway if you have the developer key. Otherwise this binding provides experimental support for lumi subdevices<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi smart Home Gateway Hub          | miio:gateway     | [lumi.gateway.mieu01](#lumi-gateway-mieu01) | Yes          | Used to control the gateway itself. Experimental support for controlling lumi subdevices |
+| Mi smart Home Gateway Hub v1       | miio:gateway     | [lumi.gateway.v1](#lumi-gateway-v1) | Experimental | Used to control the gateway itself. Use the mihome binding to control devices connected to the Xiaomi gateway if you have the developer key. Otherwise this binding provides experimental support for lumi subdevices<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi smart Home GatewayHub v2        | miio:gateway     | [lumi.gateway.v2](#lumi-gateway-v2) | Experimental | Used to control the gateway itself. Use the mihome binding to control devices connected to the Xiaomi gateway if you have the developer key. Otherwise this binding provides experimental support for lumi subdevices<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi smart Home Gateway Hub v3       | miio:gateway     | [lumi.gateway.v3](#lumi-gateway-v3) | Experimental | Used to control the gateway itself. Use the mihome binding to control devices connected to the Xiaomi gateway if you have the developer key. Otherwise this binding provides experimental support for lumi subdevices<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Aqara LED Light Bulb (Tunable White) | miio:lumi        | [lumi.light.aqcn02](#lumi-light-aqcn02) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Door lock                          | miio:lumi        | [lumi.lock.v1](#lumi-lock-v1) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Aqara Door Lock                    | miio:lumi        | [lumi.lock.aq1](#lumi-lock-aq1) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Aqara Door Lock S2                 | miio:lumi        | [lumi.lock.acn02](#lumi-lock-acn02) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Aqara Door lock S2 Pro             | miio:lumi        | [lumi.lock.acn03](#lumi-lock-acn03) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Plug (Zigbee)             | miio:lumi        | [lumi.plug.mmeu01](#lumi-plug-mmeu01) | Yes          | Needs to have the Xiaomi gateway configured in the binding as bridge. |
+| Mi Window and Door Sensor          | miio:lumi        | [lumi.sensor_magnet.v2](#lumi-sensor_magnet-v2) | Yes          | Needs to have the Xiaomi gateway configured in the binding as bridge. Note: Won't display the current status. Log only' |
+| Mi Motion Sensor                   | miio:lumi        | [lumi.sensor_motion.aq2](#lumi-sensor_motion-aq2) | Yes          | Needs to have the Xiaomi gateway configured in the binding as bridge.Note: Won't display the current status, nor trigger events. Log only |
+| Mi Motion Sensor                   | miio:lumi        | [lumi.sensor_motion.v2](#lumi-sensor_motion-v2) | Yes          | Needs to have the Xiaomi gateway configured in the binding as bridge.Note: Won't display the current status, nor trigger events. Log only |
+| Mi Temperature and Humidity Sensor | miio:lumi        | [lumi.sensor_ht.v1](#lumi-sensor_ht-v1) | Experimental | Needs to have the Xiaomi gateway configured in the binding as bridge.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Water Leak Sensor                  | miio:lumi        | [lumi.sensor_wleak.aq1](#lumi-sensor_wleak-aq1) | Yes          | Needs to have the Xiaomi gateway configured in the binding as bridge. |
+| Aqara Temperature and Humidity Sensor | miio:lumi        | [lumi.weather.v1](#lumi-weather-v1) | Yes          | Needs to have the Xiaomi gateway configured in the binding as bridge. |
+| Midea AC-i Youth                   | miio:unsupported | midea.aircondition.v1  | No           |            |
+| Midea Air Conditioner v2           | miio:unsupported | midea.aircondition.v2  | No           |            |
+| Midea AC-Cool Golden               | miio:unsupported | midea.aircondition.xa1 | No           |            |
+| Mi Robot Vacuum-Mop Essential      | miio:basic       | [mijia.vacuum.v2](#mijia-vacuum-v2) | Yes          | This device may be overwhelmed if refresh is too frequent, slowing down the responses. Suggest to increase refresh time to 120 seconds |
+| Mijia Smart Pet Water Dispenser    | miio:basic       | [mmgg.pet_waterer.s1](#mmgg-pet_waterer-s1) | Experimental | Identified manual actions for execution<br />`action{"did":"filter-reset-filter-life","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"filter-cotton-reset-cotton-life","siid":5,"aiid":1,"in":[]}`<br />`action{"did":"remain-clean-time-reset-clean-time","siid":6,"aiid":1,"in":[]}`<br />Please test and feedback if they are working so they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mijia Smart Pet Water Dispenser    | miio:basic       | [mmgg.pet_waterer.s2](#mmgg-pet_waterer-s2) | Experimental | Identified manual actions for execution<br />`action{"did":"filter-reset-filter-life","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"filter-cotton-reset-cotton-life","siid":5,"aiid":1,"in":[]}`<br />`action{"did":"remain-clean-time-reset-clean-time","siid":6,"aiid":1,"in":[]}`<br />Please test and feedback if they are working so they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mijia Smart Pet Water Dispenser    | miio:basic       | [mmgg.pet_waterer.s3](#mmgg-pet_waterer-s3) | Experimental | Identified manual actions for execution<br />`action{"did":"filter-reset-filter-life","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"filter-cotton-reset-cotton-life","siid":5,"aiid":1,"in":[]}`<br />`action{"did":"remain-clean-time-reset-clean-time","siid":6,"aiid":1,"in":[]}`<br />Please test and feedback if they are working so they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| XIAOWAN Smart Pet Water Dispenser  | miio:basic       | [mmgg.pet_waterer.s4](#mmgg-pet_waterer-s4) | Experimental | Identified manual actions for execution<br />`action{"did":"filter-reset-filter-life","siid":3,"aiid":1,"in":[]}`<br />`action{"did":"filter-cotton-reset-cotton-life","siid":5,"aiid":1,"in":[]}`<br />`action{"did":"remain-clean-time-reset-clean-time","siid":6,"aiid":1,"in":[]}`<br />Please test and feedback if they are working so they can be linked to a channel.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| MR.BOND                            | miio:basic       | [mrbond.airer.m1pro](#mrbond-airer-m1pro) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| MR.BOND                            | miio:basic       | [mrbond.airer.m1s](#mrbond-airer-m1s) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| MR.BOND                            | miio:basic       | [mrbond.airer.m1super](#mrbond-airer-m1super) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| WIDETECH WDH318EFW1 Internet Dehumidifier | miio:basic       | [nwt.derh.wdh318efw1](#nwt-derh-wdh318efw1) | Yes          |            |
+| Philips Zhirui Ceiling Lamp Bedroom 40W | miio:basic       | [philips.light.bceiling1](#philips-light-bceiling1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Philips Zhirui Ceiling Lamp Bedroom 28W | miio:basic       | [philips.light.bceiling2](#philips-light-bceiling2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Philips ZhiRui E27 bulb            | miio:basic       | [philips.light.bulb](#philips-light-bulb) | Yes          |            |
+| Philips ZhiRui E14 Candle Lamp Frosted version | miio:basic       | [philips.light.candle](#philips-light-candle) | Yes          |            |
+| Philips ZhiRui E14 Candle Lamp Crystal version | miio:basic       | [philips.light.candle2](#philips-light-candle2) | Yes          |            |
+| Mijia Philips Color Bulb           | miio:basic       | [philips.light.cbulb](#philips-light-cbulb) | Yes          |            |
+| Philips Light                      | miio:basic       | [philips.light.cbulbs](#philips-light-cbulbs) | Yes          |            |
+| Philips Connected Ceiling          | miio:basic       | [philips.light.ceiling](#philips-light-ceiling) | Yes          |            |
+| Philips Light                      | miio:basic       | [philips.light.dcolor](#philips-light-dcolor) | Yes          |            |
+| ZhiRui Dimmable Downlight          | miio:basic       | [philips.light.dlight](#philips-light-dlight) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Philips ZhiRui Downlight           | miio:basic       | [philips.light.downlight](#philips-light-downlight) | Yes          |            |
+| Philips Wi-Fi bulb E27 White       | miio:basic       | [philips.light.hbulb](#philips-light-hbulb) | Yes          |            |
+| Philips ZhiYi Ceiling Lamp FL 40W  | miio:basic       | [philips.light.lnblight1](#philips-light-lnblight1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Philips ZhiYi Ceiling Lamp FL 28W  | miio:basic       | [philips.light.lnblight2](#philips-light-lnblight2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Philips ZhiYi Ceiling Lamp FL 80W  | miio:basic       | [philips.light.lnlrlight](#philips-light-lnlrlight) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Philips Zhirui Ceiling Lamp Living room 80W | miio:basic       | [philips.light.lrceiling](#philips-light-lrceiling) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Zhirui Ceiling Lamp Nordic 80W     | miio:basic       | [philips.light.mceil](#philips-light-mceil) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Zhirui Ceiling Lamp Nordic 40W     | miio:basic       | [philips.light.mceilm](#philips-light-mceilm) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Zhirui Ceiling Lamp Nordic 28W     | miio:basic       | [philips.light.mceils](#philips-light-mceils) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Philips Smart Lamp                 | miio:basic       | [philips.light.mono1](#philips-light-mono1) | Yes          |            |
+| Philips ZhiRui Bedside Lamp        | miio:basic       | [philips.light.moonlight](#philips-light-moonlight) | Yes          |            |
+| Zhirui Ceiling Lamp Black 80W      | miio:basic       | [philips.light.obceil](#philips-light-obceil) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Zhirui Ceiling Lamp Black 40W      | miio:basic       | [philips.light.obceim](#philips-light-obceim) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Zhirui Ceiling Lamp Black 28W      | miio:basic       | [philips.light.obceis](#philips-light-obceis) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mijia Philips Study Desk Lamp      | miio:basic       | [philips.light.rwread](#philips-light-rwread) | Yes          |            |
+| Zhirui Ceiling Lamp Starry 80W     | miio:basic       | [philips.light.sceil](#philips-light-sceil) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Zhirui Ceiling Lamp Starry 40W     | miio:basic       | [philips.light.sceilm](#philips-light-sceilm) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Zhirui Ceiling Lamp Starry 28W     | miio:basic       | [philips.light.sceils](#philips-light-sceils) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Philips EyeCare Connected Desk Lamp gen2. | miio:basic       | [philips.light.sread1](#philips-light-sread1) | Yes          |            |
+| Mijia Philips Desk Lamp 2S         | miio:basic       | [philips.light.sread2](#philips-light-sread2) | Yes          |            |
+| Philips Connected Lights           | miio:basic       | [philips.light.virtual](#philips-light-virtual) | Yes          |            |
+| Zhirui Ceiling Lamp Gorgeous 80W   | miio:basic       | [philips.light.xzceil](#philips-light-xzceil) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Zhirui Ceiling Lamp Gorgeous 40W   | miio:basic       | [philips.light.xzceim](#philips-light-xzceim) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Zhirui Ceiling Lamp Gorgeous 28W   | miio:basic       | [philips.light.xzceis](#philips-light-xzceis) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Philips ZhiYi Ceiling lamp         | miio:basic       | [philips.light.zyceiling](#philips-light-zyceiling) | Yes          |            |
+| Philips ZhiYi Desk Lamp            | miio:basic       | [philips.light.zysread](#philips-light-zysread) | Yes          |            |
+| Philips ZhiYi Strip                | miio:basic       | [philips.light.zystrip](#philips-light-zystrip) | Yes          |            |
+| CHINGMI Smart Power Strip v1       | miio:basic       | [qmi.powerstrip.v1](#qmi-powerstrip-v1) | Yes          |            |
+| Rockrobo Xiaowa Sweeper v2         | miio:unsupported | roborock.sweeper.e2v2  | No           |            |
+| Rockrobo Xiaowa Sweeper v3         | miio:unsupported | roborock.sweeper.e2v3  | No           |            |
+| Roborock S6 Pure                   | miio:vacuum      | [roborock.vacuum.a08](#roborock-vacuum-a08) | Yes          |            |
+| Roborock T7 Pro                    | miio:vacuum      | [roborock.vacuum.a09](#roborock-vacuum-a09) | Yes          |            |
+| Roborock S6 MaxV                   | miio:vacuum      | [roborock.vacuum.a10](#roborock-vacuum-a10) | Yes          |            |
+| Roborock T7                        | miio:vacuum      | [roborock.vacuum.a11](#roborock-vacuum-a11) | Yes          |            |
+| Roborock T7S                       | miio:vacuum      | [roborock.vacuum.a14](#roborock-vacuum-a14) | Yes          |            |
+| Roborock S7                        | miio:vacuum      | [roborock.vacuum.a15](#roborock-vacuum-a15) | Yes          |            |
+| Roborock S4 Max                    | miio:vacuum      | [roborock.vacuum.a19](#roborock-vacuum-a19) | Yes          |            |
+| Roborock T7S Plus                  | miio:vacuum      | [roborock.vacuum.a23](#roborock-vacuum-a23) | Yes          |            |
+| Xiaowa C1                          | miio:vacuum      | [roborock.vacuum.c1](#roborock-vacuum-c1) | Yes          |            |
+| Roborock Xiaowa E Series Vacuum v2 | miio:unsupported | roborock.vacuum.e2     | No           |            |
+| Mi Robot Vacuum 1S                 | miio:vacuum      | [roborock.vacuum.m1s](#roborock-vacuum-m1s) | Yes          |            |
+| Roborock P5                        | miio:vacuum      | [roborock.vacuum.p5](#roborock-vacuum-p5) | Yes          |            |
+| Roborock S4                        | miio:vacuum      | [roborock.vacuum.s4](#roborock-vacuum-s4) | Yes          |            |
+| Roborock Vacuum S4v2               | miio:vacuum      | [roborock.vacuum.s4v2](#roborock-vacuum-s4v2) | Yes          |            |
+| Roborock S5                        | miio:vacuum      | [roborock.vacuum.s5](#roborock-vacuum-s5) | Yes          |            |
+| Roborock S5 Max                    | miio:vacuum      | [roborock.vacuum.s5e](#roborock-vacuum-s5e) | Yes          |            |
+| Roborock S6                        | miio:vacuum      | [roborock.vacuum.s6](#roborock-vacuum-s6) | Yes          |            |
+| Roborock T4                        | miio:vacuum      | [roborock.vacuum.t4](#roborock-vacuum-t4) | Yes          |            |
+| Roborock Vacuum T4 v2              | miio:vacuum      | [roborock.vacuum.t4v2](#roborock-vacuum-t4v2) | Yes          |            |
+| Roborock Vacuum T4 v3              | miio:vacuum      | [roborock.vacuum.t4v3](#roborock-vacuum-t4v3) | Yes          |            |
+| Roborock T6                        | miio:vacuum      | [roborock.vacuum.t6](#roborock-vacuum-t6) | Yes          |            |
+| Roborock Vacuum T6 v2              | miio:vacuum      | [roborock.vacuum.t6v2](#roborock-vacuum-t6v2) | Yes          |            |
+| Roborock Vacuum T6 v3              | miio:vacuum      | [roborock.vacuum.t6v3](#roborock-vacuum-t6v3) | Yes          |            |
+| Roborock Vacuum T7                 | miio:vacuum      | [roborock.vacuum.t7](#roborock-vacuum-t7) | Yes          |            |
+| Roborock Vacuum T7p                | miio:vacuum      | [roborock.vacuum.t7p](#roborock-vacuum-t7p) | Yes          |            |
+| Roborock Vacuum T7 v2              | miio:vacuum      | [roborock.vacuum.t7pv2](#roborock-vacuum-t7pv2) | Yes          |            |
+| Roborock Vacuum T7 v3              | miio:vacuum      | [roborock.vacuum.t7pv3](#roborock-vacuum-t7pv3) | Yes          |            |
+| Roborock Vacuum T7 v2              | miio:vacuum      | [roborock.vacuum.t7v2](#roborock-vacuum-t7v2) | Yes          |            |
+| Roborock Vacuum T7 v3              | miio:vacuum      | [roborock.vacuum.t7v3](#roborock-vacuum-t7v3) | Yes          |            |
+| Roborock Vacuum S6                 | miio:vacuum      | [rockrobo.vacuum.s6](#rockrobo-vacuum-s6) | Yes          |            |
+| Mi Robot Vacuum                    | miio:vacuum      | [rockrobo.vacuum.v1](#rockrobo-vacuum-v1) | Yes          |            |
+| ROIDMI EVE vacuum                  | miio:basic       | [roidmi.vacuum.v60](#roidmi-vacuum-v60) | Yes          |            |
+| PTX OneKey Switch (WIFI)           | miio:basic       | [090615.switch.xswitch01](#090615-switch-xswitch01) | Yes          |            |
+| PTX Twokey switch(wifi)            | miio:basic       | [090615.switch.xswitch02](#090615-switch-xswitch02) | Yes          |            |
+| PTX ThreeKey Switch (WIFI)         | miio:basic       | [090615.switch.xswitch03](#090615-switch-xswitch03) | Yes          |            |
+| SCISHARE Smart Capsule Coffee Machine | miio:basic       | [scishare.coffee.s1102](#scishare-coffee-s1102) | Experimental | This device does not allow for regular querying for the status. Hence the status is not updated for the action channels.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Xiaomi Scishare Smart Capsule Coffee Machine | miio:basic       | [scishare.coffee.s1301](#scishare-coffee-s1301) | Experimental | This device does not allow for regular querying for the status. Hence the status is not updated for the action channels.<br />Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Soocare Electric Toothbrush        | miio:unsupported | soocare.toothbrush.x3  | No           |            |
+| Viomi Internet Refrigerator iLive(French style 462L) | miio:unsupported | viomi.fridge.v3        | No           |            |
+| Viomi Cleaning Robot V-RVCLM21B    | miio:basic       | [viomi.vacuum.v6](#viomi-vacuum-v6) | Yes          |            |
+| Mi Robot Vacuum-Mop P              | miio:basic       | [viomi.vacuum.v7](#viomi-vacuum-v7) | Yes          |            |
+| Mi Robot Vacuum-Mop P              | miio:basic       | [viomi.vacuum.v8](#viomi-vacuum-v8) | Yes          |            |
+| Viomi S9                           | miio:basic       | [viomi.vacuum.v18](#viomi-vacuum-v18) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| VIOMI Internet Electric Water Heater 1A (60L) | miio:basic       | [viomi.waterheater.e1](#viomi-waterheater-e1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Inverter Air Conditioner (1.5HP) | miio:basic       | [xiaomi.aircondition.ma1](#xiaomi-aircondition-ma1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Inverter Air Conditioner (1.5HP, China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.ma2](#xiaomi-aircondition-ma2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Vertical Air Conditioner (2HP)  | miio:basic       | [xiaomi.aircondition.ma4](#xiaomi-aircondition-ma4) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Vertical Air Conditioner C1 (2HP / Inverter / China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.ma5](#xiaomi-aircondition-ma5) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Conditioner C1 (1.5HP / Conventional / China Energy Label Level 3) | miio:basic       | [xiaomi.aircondition.ma6](#xiaomi-aircondition-ma6) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Conditioner C1 (1HP / Inverter / China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.ma9](#xiaomi-aircondition-ma9) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Conditioner A (1HP / Inverter / China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mc1](#xiaomi-aircondition-mc1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Conditioner A (1.5HP / Inverter / China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mc2](#xiaomi-aircondition-mc2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Conditioner A (1HP / Inverter / China Energy Label Level <1) | miio:basic       | [xiaomi.aircondition.mc4](#xiaomi-aircondition-mc4) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Conditioner A (1.5HP / Inverter / China Energy Label Level <1) | miio:basic       | [xiaomi.aircondition.mc5](#xiaomi-aircondition-mc5) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Vertical Air Conditioner A (2HP / Inverter / China Energy Label Level <1) | miio:basic       | [xiaomi.aircondition.mc6](#xiaomi-aircondition-mc6) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Vertical Air Conditioner A (3HP / Inverter / China Energy Label Level <1) | miio:basic       | [xiaomi.aircondition.mc7](#xiaomi-aircondition-mc7) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Ultra Electricity Saving Air Conditioner(1.5HP/Inverter/New China Energy Label Level 3) | miio:basic       | [xiaomi.aircondition.mc8](#xiaomi-aircondition-mc8) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Ultra Electricity Saving Vertical Air Conditioner(2HP/Inverter/New China Energy Label Level 3) | miio:basic       | [xiaomi.aircondition.mc9](#xiaomi-aircondition-mc9) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Ultra Electricity Saving Vertical Air Conditioner (2HP/Inverter/New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.c10](#xiaomi-aircondition-c10) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Ultra Electricity Saving Vertical Air Conditioner (3HP/Inverter/New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.c11](#xiaomi-aircondition-c11) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Conditioner C (1HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mh1](#xiaomi-aircondition-mh1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Conditioner C (1.5HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mh2](#xiaomi-aircondition-mh2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Ultra Electricity Saving Air Conditioner(1HP/Inverter/New China Energy Label Level 3) | miio:basic       | [xiaomi.aircondition.mh3](#xiaomi-aircondition-mh3) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Conditioner X (1HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt1](#xiaomi-aircondition-mt1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Air Conditioner X (1.5HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt2](#xiaomi-aircondition-mt2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Gentle Breeze Air Conditioner (1HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt3](#xiaomi-aircondition-mt3) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Gentle Breeze Air Conditioner (1.5HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt4](#xiaomi-aircondition-mt4) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Gentle Breeze Vertical Air Conditioner (3HP / Inverter / New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt5](#xiaomi-aircondition-mt5) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Ultra Electricity Saving Air Conditioner (1HP/Inverter/New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt7](#xiaomi-aircondition-mt7) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Ultra Electricity Saving Air Conditioner (1.5HP/Inverter/New China Energy Label Level 1) | miio:basic       | [xiaomi.aircondition.mt8](#xiaomi-aircondition-mt8) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Wi-Fi Repeater 2                | miio:unsupported | xiaomi.repeater.v2     | No           |            |
+| Mi Network Speaker                 | miio:unsupported | xiaomi.wifispeaker.v1  | No           |            |
+| Uclean Smart Toilet Seat           | miio:basic       | [xjx.toilet.pro](#xjx-toilet-pro) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Uclean Smart Toilet pure           | miio:basic       | [xjx.toilet.pure](#xjx-toilet-pure) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Uclean Smart Toilet relax          | miio:basic       | [xjx.toilet.relax](#xjx-toilet-relax) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Whale Spout Smart Toilet Zero      | miio:basic       | [xjx.toilet.zero](#xjx-toilet-zero) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Yeelight Smart Bath Heater         | miio:unsupported | yeelight.bhf_light.v2  | No           |            |
+| Yeelight Smart Bath Heater Pro     | miio:basic       | [yeelink.bhf_light.v1](#yeelink-bhf_light-v1) | Yes          |            |
+| Yeelight Smart Bath Heater         | miio:basic       | [yeelink.bhf_light.v2](#yeelink-bhf_light-v2) | Yes          |            |
+| Mi Bedside Lamp                    | miio:basic       | [yeelink.light.bslamp1](#yeelink-light-bslamp1) | Yes          |            |
+| Mi Bedside Lamp 2                  | miio:basic       | [yeelink.light.bslamp2](#yeelink-light-bslamp2) | Yes          |            |
+| Yeelight Bedside Lamp II           | miio:basic       | [yeelink.light.bslamp3](#yeelink-light-bslamp3) | Yes          |            |
+| Yeelight Ceiling Light             | miio:basic       | [yeelink.light.ceiling1](#yeelink-light-ceiling1) | Yes          |            |
+| Yeelight Ceiling Light SE          | miio:basic       | [yeelink.light.ceiling2](#yeelink-light-ceiling2) | Yes          |            |
+| Yeelight LED Ceiling Light         | miio:basic       | [yeelink.light.ceiling3](#yeelink-light-ceiling3) | Yes          |            |
+| Yeelight LED Ceiling Light         | miio:basic       | [yeelink.light.ceiling4](#yeelink-light-ceiling4) | Yes          |            |
+| Yeelight LED Ceiling Ambi Lamp     | miio:basic       | [yeelink.light.ceiling4.ambi](#yeelink-light-ceiling4-ambi) | Yes          |            |
+| Mi LED Ceiling Light               | miio:basic       | [yeelink.light.ceiling5](#yeelink-light-ceiling5) | Yes          |            |
+| Yeelight HaoShi LED Ceiling Lamp Pro | miio:basic       | [yeelink.light.ceiling6](#yeelink-light-ceiling6) | Yes          |            |
+| Yeelight Haoshi Ceiling Lamp       | miio:basic       | [yeelink.light.ceiling7](#yeelink-light-ceiling7) | Yes          |            |
+| LED Ceiling Light Crystal Plus     | miio:basic       | [yeelink.light.ceiling8](#yeelink-light-ceiling8) | Yes          |            |
+| Yeelight HaoShi LED Ceiling Lamp Pro | miio:basic       | [yeelink.light.ceiling9](#yeelink-light-ceiling9) | Yes          |            |
+| Yeelight Crystal Pendant Lamp      | miio:basic       | [yeelink.light.ceiling10](#yeelink-light-ceiling10) | Yes          |            |
+| Yeelight LED Ceiling Ambi Lamp     | miio:basic       | [yeelink.light.ceiling10.ambi](#yeelink-light-ceiling10-ambi) | Yes          |            |
+| Yeelight Ceiling Light 320 1S      | miio:basic       | [yeelink.light.ceiling11](#yeelink-light-ceiling11) | Yes          |            |
+| Yeelight Stylized Ceiling Light  Pro | miio:basic       | [yeelink.light.ceiling12](#yeelink-light-ceiling12) | Yes          |            |
+| Yeelight Ceiling Light             | miio:basic       | [yeelink.light.ceiling13](#yeelink-light-ceiling13) | Yes          |            |
+| Yeelight Ceiling Light Mini        | miio:basic       | [yeelink.light.ceiling14](#yeelink-light-ceiling14) | Yes          |            |
+| Yeelight Ceiling Light 480 1S      | miio:basic       | [yeelink.light.ceiling15](#yeelink-light-ceiling15) | Yes          |            |
+| Yeelight Xingyu Ceiling Light      | miio:basic       | [yeelink.light.ceiling16](#yeelink-light-ceiling16) | Yes          |            |
+| Yeelight ShaoHua Celing Light      | miio:basic       | [yeelink.light.ceiling17](#yeelink-light-ceiling17) | Yes          |            |
+| Yeelight Ceiling Light Pro         | miio:basic       | [yeelink.light.ceiling18](#yeelink-light-ceiling18) | Yes          |            |
+| Yeelight Ceiling Light Pro         | miio:basic       | [yeelink.light.ceiling19](#yeelink-light-ceiling19) | Yes          |            |
+| Yeelight LED Ceiling Ambi Lamp     | miio:basic       | [yeelink.light.ceiling19.ambi](#yeelink-light-ceiling19-ambi) | Yes          |            |
+| Yeelight Ceiling Light             | miio:basic       | [yeelink.light.ceiling20](#yeelink-light-ceiling20) | Yes          |            |
+| Yeelight LED Ceiling Ambi Lamp     | miio:basic       | [yeelink.light.ceiling20.ambi](#yeelink-light-ceiling20-ambi) | Yes          |            |
+| Mi Smart LED Living Room Ceiling Light | miio:basic       | [yeelink.light.ceiling21](#yeelink-light-ceiling21) | Yes          |            |
+| Mi Smart LED Ceiling Light         | miio:basic       | [yeelink.light.ceiling22](#yeelink-light-ceiling22) | Yes          |            |
+| Mi Smart LED Ceiling Light (350mm) | miio:basic       | [yeelink.light.ceiling23](#yeelink-light-ceiling23) | Yes          |            |
+| Yeelight Jade Smart LED Ceiling Light C2001 | miio:basic       | [yeelink.light.ceil26](#yeelink-light-ceil26) | Yes          |            |
+| Yeelight Color Bulb                | miio:basic       | [yeelink.light.color1](#yeelink-light-color1) | Yes          |            |
+| Yeelight LED Bulb (Color)          | miio:basic       | [yeelink.light.color2](#yeelink-light-color2) | Yes          |            |
+| Mi LED Smart Bulb (White and Color) | miio:basic       | [yeelink.light.color3](#yeelink-light-color3) | Yes          |            |
+| Yeelight LED Bulb 1S（Color）        | miio:basic       | [yeelink.light.color4](#yeelink-light-color4) | Yes          |            |
+| Mi Smart LED Bulb Essential (White and Color) | miio:basic       | [yeelink.light.color5](#yeelink-light-color5) | Yes          |            |
+| Yeelight Smart LED Bulb 1SE (color) | miio:basic       | [yeelink.light.colora](#yeelink-light-colora) | Yes          |            |
+| Yeelight LED Bulb (Tunable)        | miio:basic       | [yeelink.light.ct2](#yeelink-light-ct2) | Yes          |            |
+| Mi LED Desk Lamp                   | miio:basic       | [yeelink.light.lamp1](#yeelink-light-lamp1) | Yes          |            |
+| Mi Smart LED Desk Lamp Pro         | miio:basic       | [yeelink.light.lamp2](#yeelink-light-lamp2) | Yes          |            |
+| Yeelight LED Lamp                  | miio:basic       | [yeelink.light.lamp3](#yeelink-light-lamp3) | Yes          |            |
+| Mi LED Desk Lamp 1S                | miio:basic       | [yeelink.light.lamp4](#yeelink-light-lamp4) | Yes          |            |
+| Yeelight Smart Desk Lamp Prime     | miio:basic       | [yeelink.light.lamp5](#yeelink-light-lamp5) | Yes          |            |
+| Yeelight                           | miio:basic       | [yeelink.light.lamp6](#yeelink-light-lamp6) | Yes          |            |
+| Yeelight LED Light Sensor Desk Lamp V1 | miio:basic       | [yeelink.light.lamp7](#yeelink-light-lamp7) | Yes          |            |
+| Yeelight                           | miio:basic       | [yeelink.light.lamp8](#yeelink-light-lamp8) | Yes          |            |
+| Yeelight Star LED Table Lamp       | miio:basic       | [yeelink.light.lamp9](#yeelink-light-lamp9) | Yes          |            |
+| Yeelight Star Floor Lamp           | miio:basic       | [yeelink.light.lamp10](#yeelink-light-lamp10) | Yes          |            |
+| Yeelight Screen Light Bar          | miio:basic       | [yeelink.light.lamp15](#yeelink-light-lamp15) | Yes          |            |
+| Yeelight Bulb                      | miio:basic       | [yeelink.light.mono1](#yeelink-light-mono1) | Yes          |            |
+| Yeelight White Bulb v2             | miio:basic       | [yeelink.light.mono2](#yeelink-light-mono2) | Yes          |            |
+| Yeelight LED Bulb 1S（Dimmable）     | miio:basic       | [yeelink.light.mono4](#yeelink-light-mono4) | Yes          |            |
+| Yeelight LED Filament Bulb         | miio:basic       | [yeelink.light.mono5](#yeelink-light-mono5) | Yes          |            |
+| Mi Smart LED Bulb                  | miio:basic       | [yeelink.light.mono6](#yeelink-light-mono6) | Yes          |            |
+| Yeelight LED smart bulb W3(dimmable) | miio:basic       | [yeelink.light.monoa](#yeelink-light-monoa) | Yes          |            |
+| Yeelight GU10 Smart Bulb W1(dimmable) | miio:basic       | [yeelink.light.monob](#yeelink-light-monob) | Yes          |            |
+| Yeelight Whiteglow Panel Light     | miio:basic       | [yeelink.light.panel1](#yeelink-light-panel1) | Yes          |            |
+| Yeelight Lightstrip                | miio:basic       | [yeelink.light.strip1](#yeelink-light-strip1) | Yes          |            |
+| Yeelight Lightstrip Plus           | miio:basic       | [yeelink.light.strip2](#yeelink-light-strip2) | Yes          |            |
+| Yeelight Willow LED Lightstrip     | miio:basic       | [yeelink.light.strip4](#yeelink-light-strip4) | Yes          |            |
+| Light Group (Mi & Yeelight)        | miio:basic       | [yeelink.light.virtual](#yeelink-light-virtual) | Yes          |            |
+| Yeelight Smart Dual Control Module | miio:basic       | [yeelink.switch.sw1](#yeelink-switch-sw1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Yeelight Smart Speaker             | miio:unsupported | yeelink.wifispeaker.v1 | No           |            |
+| Yilai Ceiling Light Aiyue 480      | miio:basic       | [yilai.light.ceiling1](#yilai-light-ceiling1) | Yes          |            |
+| Yilai Ceiling Lamp Hefeng 430      | miio:basic       | [yilai.light.ceiling2](#yilai-light-ceiling2) | Yes          |            |
+| Yilai Ceiling Lamp Hefeng Pro      | miio:basic       | [yilai.light.ceiling3](#yilai-light-ceiling3) | Yes          |            |
+| Mi Water Purifier lx2              | miio:basic       | [yunmi.waterpuri.lx2](#yunmi-waterpuri-lx2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier (Under Counter)  | miio:basic       | [yunmi.waterpuri.lx3](#yunmi-waterpuri-lx3) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier lx4              | miio:basic       | [yunmi.waterpuri.lx4](#yunmi-waterpuri-lx4) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier 1A/400G Pro      | miio:basic       | [yunmi.waterpuri.lx5](#yunmi-waterpuri-lx5) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier (Under Counter)  | miio:basic       | [yunmi.waterpuri.lx6](#yunmi-waterpuri-lx6) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier 500G/500G Pro    | miio:basic       | [yunmi.waterpuri.lx7](#yunmi-waterpuri-lx7) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier 600G             | miio:basic       | [yunmi.waterpuri.lx8](#yunmi-waterpuri-lx8) | Yes          |            |
+| Mi Water Purifier D1               | miio:basic       | [yunmi.waterpuri.lx9](#yunmi-waterpuri-lx9) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier lx10             | miio:basic       | [yunmi.waterpuri.lx10](#yunmi-waterpuri-lx10) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier C1 (Triple Setting) | miio:basic       | [yunmi.waterpuri.lx11](#yunmi-waterpuri-lx11) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier S1               | miio:basic       | [yunmi.waterpuri.lx12](#yunmi-waterpuri-lx12) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier v1               | miio:basic       | [yunmi.waterpurifier.v1](#yunmi-waterpurifier-v1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier v2               | miio:basic       | [yunmi.waterpurifier.v2](#yunmi-waterpurifier-v2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier (Under sink) v3  | miio:basic       | [yunmi.waterpurifier.v3](#yunmi-waterpurifier-v3) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Water Purifier v4               | miio:basic       | [yunmi.waterpurifier.v4](#yunmi-waterpurifier-v4) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Smartmi Ventilation System         | miio:basic       | [zhimi.airfresh.va2](#zhimi-airfresh-va2) | Yes          |            |
+| Smartmi Fresh Air System (Heating) | miio:basic       | [zhimi.airfresh.va4](#zhimi-airfresh-va4) | Yes          |            |
+| Mi Fresh Air Ventilator C1-80      | miio:basic       | [zhimi.airfresh.ua1](#zhimi-airfresh-ua1) | Yes          |            |
+| Mi PM2.5 Air Quality Monitor       | miio:basic       | [zhimi.airmonitor.v1](#zhimi-airmonitor-v1) | Yes          |            |
+| Mi Air Purifier 3C                 | miio:basic       | [zhimi.airp.mb4a](#zhimi-airp-mb4a) | Yes          |            |
+| Mi Air Purifier 2 (mini)           | miio:basic       | [zhimi.airpurifier.m1](#zhimi-airpurifier-m1) | Yes          |            |
+| Mi Air Purifier 2                  | miio:basic       | [zhimi.airpurifier.m2](#zhimi-airpurifier-m2) | Yes          |            |
+| Mi Air Purifier 2S                 | miio:basic       | [zhimi.airpurifier.ma1](#zhimi-airpurifier-ma1) | Yes          |            |
+| Mi Air Purifier 2S                 | miio:basic       | [zhimi.airpurifier.ma2](#zhimi-airpurifier-ma2) | Yes          |            |
+| Mi Air Purifier 3                  | miio:basic       | [zhimi.airpurifier.ma4](#zhimi-airpurifier-ma4) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Air Purifier 2S                 | miio:basic       | [zhimi.airpurifier.mb1](#zhimi-airpurifier-mb1) | Yes          |            |
+| Mi Air Purifier 3/3H               | miio:basic       | [zhimi.airpurifier.mb3](#zhimi-airpurifier-mb3) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Air Purifier 3C                 | miio:basic       | [zhimi.airpurifier.mb4](#zhimi-airpurifier-mb4) | Yes          |            |
+| Mi Air Purifier 2S                 | miio:basic       | [zhimi.airpurifier.mc1](#zhimi-airpurifier-mc1) | Yes          |            |
+| Mi Air Purifier 2H                 | miio:basic       | [zhimi.airpurifier.mc2](#zhimi-airpurifier-mc2) | Yes          |            |
+| Mi Air Purifier Super              | miio:basic       | [zhimi.airpurifier.sa1](#zhimi-airpurifier-sa1) | Yes          |            |
+| Mi Air Purifier MAX / MAX Pro      | miio:basic       | [zhimi.airpurifier.sa2](#zhimi-airpurifier-sa2) | Yes          |            |
+| Mi Air Purifier v1                 | miio:basic       | [zhimi.airpurifier.v1](#zhimi-airpurifier-v1) | Yes          |            |
+| Mi Air Purifier v2                 | miio:basic       | [zhimi.airpurifier.v2](#zhimi-airpurifier-v2) | Yes          |            |
+| Mi Air Purifier v3                 | miio:basic       | [zhimi.airpurifier.v3](#zhimi-airpurifier-v3) | Yes          |            |
+| Mi Air Purifier v5                 | miio:basic       | [zhimi.airpurifier.v5](#zhimi-airpurifier-v5) | Yes          |            |
+| Mi Air Purifier Pro v6             | miio:basic       | [zhimi.airpurifier.v6](#zhimi-airpurifier-v6) | Yes          |            |
+| Mi Air Purifier Pro v7             | miio:basic       | [zhimi.airpurifier.v7](#zhimi-airpurifier-v7) | Yes          |            |
+| Mi Air Purifier Pro H              | miio:basic       | [zhimi.airpurifier.vb2](#zhimi-airpurifier-vb2) | Yes          |            |
+| Mi Air Purifier virtual            | miio:unsupported | zhimi.airpurifier.virtual | No           |            |
+| Mi Air Purifier 2(Virtual)         | miio:unsupported | zhimi.airpurifier.vtl_m1 | No           |            |
+| Smartmi Air Purifier               | miio:basic       | [zhimi.airpurifier.za1](#zhimi-airpurifier-za1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Standing Fan                    | miio:basic       | [zhimi.fan.sa1](#zhimi-fan-sa1) | Yes          |            |
+| Mi Smart Fan                       | miio:basic       | [zhimi.fan.v1](#zhimi-fan-v1) | Yes          |            |
+| Smartmi DC Pedestal Fan            | miio:basic       | [zhimi.fan.v2](#zhimi-fan-v2) | Yes          |            |
+| Smartmi DC Pedestal Fan            | miio:basic       | [zhimi.fan.v3](#zhimi-fan-v3) | Yes          |            |
+| Smartmi Inverter Pedestal Fan      | miio:basic       | [zhimi.fan.za1](#zhimi-fan-za1) | Yes          |            |
+| Smartmi Standing Fan 2             | miio:basic       | [zhimi.fan.za3](#zhimi-fan-za3) | Yes          |            |
+| Smartmi Standing Fan 2S            | miio:basic       | [zhimi.fan.za4](#zhimi-fan-za4) | Yes          |            |
+| Smartmi Standing Fan 3             | miio:basic       | [zhimi.fan.za5](#zhimi-fan-za5) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Space Heater S            | miio:basic       | [zhimi.heater.ma2](#zhimi-heater-ma2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Baseboard Heater E        | miio:basic       | [zhimi.heater.ma3](#zhimi-heater-ma3) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Mi Smart Space Heater S            | miio:basic       | [zhimi.heater.mc2](#zhimi-heater-mc2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Smartmi Smart Fan                  | miio:basic       | [zhimi.heater.na1](#zhimi-heater-na1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Smartmi Smart Fan Heater           | miio:basic       | [zhimi.heater.nb1](#zhimi-heater-nb1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Smartmi Radiant Heater Smart Version | miio:basic       | [zhimi.heater.za1](#zhimi-heater-za1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Smartmi Smart Convector Heater 1S  | miio:basic       | [zhimi.heater.za2](#zhimi-heater-za2) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Smartmi Smart Convector Heater 1S  | miio:basic       | [zhimi.heater.zb1](#zhimi-heater-zb1) | Experimental | Experimental support. Please report back if all channels are functional. Preferably share the debug log of property refresh and command responses |
+| Smartmi Evaporative Humidifier     | miio:basic       | [zhimi.humidifier.ca1](#zhimi-humidifier-ca1) | Yes          |            |
+| Smartmi Evaporative Humidifer 2    | miio:basic       | [zhimi.humidifier.ca4](#zhimi-humidifier-ca4) | Yes          |            |
+| Smartmi Evaporative Humidifier     | miio:basic       | [zhimi.humidifier.cb1](#zhimi-humidifier-cb1) | Yes          |            |
+| Smartmi Evaporative Humidifier     | miio:basic       | [zhimi.humidifier.cb2](#zhimi-humidifier-cb2) | Yes          |            |
+| Smartmi Humidifier                 | miio:basic       | [zhimi.humidifier.v1](#zhimi-humidifier-v1) | Yes          |            |
+| Mi AI Alarm                        | miio:unsupported | zimi.clock.myk01       | No           |            |
+| Mi Smart Power Strip               | miio:basic       | [zimi.powerstrip.v2](#zimi-powerstrip-v2) | Yes          |            |
 
+note: Supported means we received feedback from users this device is working with the binding. 
+For devices with experimental support, we did not yet confirmation that channels are correctly working. 
+Please feedback your findings for these devices (e.g. Are all channels working, do they contain the right information, is controlling the devices working etc.)
 
 # Channels
 
@@ -517,6 +570,108 @@ All devices have available the following channels (marked as advanced) besides t
 note: the ADVANCED  `actions#commands` and `actions#rpc` channels can be used to send commands that are not automated via the binding. This is available for all devices
 e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enable a pre-configured timer. See https://github.com/marcelrv/XiaomiRobotVacuumProtocol for all known available commands.
 
+
+### Robo Rock vacuum Channels
+
+| Type    | Channel                           | Description                |
+|---------|-----------------------------------|----------------------------|
+| Number  | status#segment_status             | Segment Status             |
+| Number  | status#map_status                 | Map Box Status             |
+| Number  | status#led_status                 | Led Box Status             |
+| String  | info#carpet_mode                  | Carpet Mode details        |
+| String  | info#fw_features                  | Firmware Features          |
+| String  | info#room_mapping                 | Room Mapping details       |
+| String  | info#multi_maps_list              | Maps Listing details       |
+
+Additionally depending on the capabilities of your robot vacuum other channels may be enabled at runtime
+
+| Type    | Channel                           | Description                |
+|---------|-----------------------------------|----------------------------|
+| Switch  | status#water_box_status           | Water Box Status           |
+| Switch  | status#lock_status                | Lock Status                |
+| Number  | status#water_box_mode             | Water Box Mode             |
+| Switch  | status#water_box_carriage_status  | Water Box Carriage Status  |
+| Switch  | status#mop_forbidden_enable       | Mop Forbidden              |
+| Switch  | status#is_locating                | Robot is locating          |
+| Number  | actions#segment                   | Room Clean  (enter room #) |
+
+Note: cleaning map is only available with cloud access.
+
+There are several advanced channels, which may be useful in rules (e.g. for individual room cleaning etc)
+In case your vacuum does not support one of these commands, it will show "unsupported_method" for string channels or no value for numeric channels.
+
+### Advanced: Vacuum Map Customization
+
+In case the default rendering of the vacuum map is not meeting your integration needs, the rendering can be tailored.
+The way to customize this is to create a file with the name `mapConfig.json` in the `userdata/miio` folder.
+If the binding finds this file it will read the map rendering preferences from there.
+If the file is available but invalid json, it will create a new file with all the default values for you to customize.
+This allows you to control the colors, if logo is displayed, if and what text is rendered etc.
+To (re-)read the file either restart openHAB, restart the binding or alternatively edit the thing and make (any) minor change.
+Note, cropping is disabled (hence showing like the maps in OH3.1 and earlier) for any `cropBorder` value < 0.
+Note, not all the values need to be in the json file, e.g. a subset of the parameters also works, the parameters not in the `mapConfig.json` will take the default values.
+
+
+### Mi Air Frying Pan (<a name="careli-fryer-maf01">careli.fryer.maf01</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| actions              | String               | Actions                                  | Value mapping `["air-fryer-start-cook"="Air Fryer Start Cook","air-fryer-cancel-cooking"="Air Fryer Cancel Cooking","air-fryer-pause"="Air Fryer Pause","custom-start-cook"="Custom Start Cook","custom-resume-cook"="Custom Resume Cook"]` |
+| status               | Number               | Air Fryer - Status                       | Value mapping `["0"="Shutdown","1"="Standby","2"="Pause","3"="Appointment","4"="Cooking","5"="Preheat ","6"="Cooked","7"="Preheat Finish","8"="Preheat Pause","9"="Pause2"]` |
+| fault                | Number               | Air Fryer - Device Fault                 | Value mapping `["0"="No Faults","1"="E1","2"="E2"]` |
+| target_time          | Number:Time          | Air Fryer - Target Time                  |            |
+| target_temperature   | Number:Temperature   | Air Fryer - Target Temperature           |            |
+| left_time            | Number:Time          | Air Fryer - Left Time                    |            |
+| recipe_id            | String               | Custom - Recipe Id                       |            |
+| recipe_name          | String               | Custom - Recipe Name                     |            |
+| work_time            | Number:Time          | Custom - Work Time                       |            |
+| work_temp            | Number:Temperature   | Custom - Work Temp                       |            |
+| appoint_time         | Number:Time          | Custom - Appoint Time                    |            |
+| food_quantity        | Number               | Custom - Food Quantity                   | Value mapping `["0"="Null","1"="Single","2"="Double","3"="Half","4"="Full"]` |
+| preheat_switch       | Number               | Custom - Preheat Switch                  | Value mapping `["0"="Null","1"="Off","2"="On"]` |
+| appoint_time_left    | Number:Time          | Custom - Appoint Time Left               |            |
+| recipe_sync          | String               | Custom - Recipe Sync                     |            |
+| turn_pot             | Number               | Custom - Turn Pot                        | Value mapping `["1"="Switch Off","0"="Not Turn Pot","2"="Turn Pot"]` |
+
+### Mi Smart Air Fryer (3.5L) (<a name="careli-fryer-maf02">careli.fryer.maf02</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| actions              | String               | Actions                                  | Value mapping `["air-fryer-start-cook"="Air Fryer Start Cook","air-fryer-cancel-cooking"="Air Fryer Cancel Cooking","air-fryer-pause"="Air Fryer Pause","custom-start-custom-cook"="Custom Start Custom Cook","custom-resume-cooking"="Custom Resume Cooking"]` |
+| status               | Number               | Air Fryer - Status                       | Value mapping `["0"="Shutdown","1"="Standby","2"="Pause","3"="Appointment","4"="Cooking","5"="Preheat ","6"="Cooked","7"="Preheat Finish","8"="Preheat Pause","9"="Pause2"]` |
+| fault                | Number               | Air Fryer - Device Fault                 | Value mapping `["0"="No Faults","1"="E1","2"="E2"]` |
+| target_time          | Number:Time          | Air Fryer - Target Time                  |            |
+| target_temperature   | Number:Temperature   | Air Fryer - Target Temperature           |            |
+| left_time            | Number:Time          | Air Fryer - Left Time                    |            |
+| recipe_id            | String               | Custom - Recipe Id                       |            |
+| work_time            | Number:Time          | Custom - Work Time                       |            |
+| work_temp            | Number:Temperature   | Custom - Work Temp                       |            |
+| appoint_time         | Number:Time          | Custom - Appoint Time                    |            |
+| food_quantity        | Number               | Custom - Food Quantity                   | Value mapping `["0"="Null","1"="Single","2"="Double","3"="Half","4"="Full"]` |
+| preheat_switch       | Number               | Custom - Preheat Switch                  | Value mapping `["0"="Null","1"="Off","2"="On"]` |
+| appoint_time_left    | Number:Time          | Custom - Appoint Time Left               |            |
+| turn_pot             | Number               | Custom - Turn Pot                        | Value mapping `["1"="Switch Off","0"="Not Turn Pot","2"="Turn Pot"]` |
+
+### Mi Air Frying Pan (<a name="careli-fryer-maf03">careli.fryer.maf03</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| actions              | String               | Actions                                  | Value mapping `["air-fryer-start-cook"="Air Fryer Start Cook","air-fryer-cancel-cooking"="Air Fryer Cancel Cooking","air-fryer-pause"="Air Fryer Pause","custom-start-cook"="Custom Start Cook","custom-resume-cook"="Custom Resume Cook"]` |
+| status               | Number               | Air Fryer - Status                       | Value mapping `["0"="Shutdown","1"="Standby","2"="Pause","3"="Appointment","4"="Cooking","5"="Preheat ","6"="Cooked","7"="Preheat Finish","8"="Preheat Pause","9"="Pause2"]` |
+| fault                | Number               | Air Fryer - Device Fault                 | Value mapping `["0"="No Faults","1"="E1","2"="E2"]` |
+| target_time          | Number:Time          | Air Fryer - Target Time                  |            |
+| target_temperature   | Number:Temperature   | Air Fryer - Target Temperature           |            |
+| left_time            | Number:Time          | Air Fryer - Left Time                    |            |
+| recipe_id            | String               | Custom - Recipe Id                       |            |
+| recipe_name          | String               | Custom - Recipe Name                     |            |
+| work_time            | Number:Time          | Custom - Work Time                       |            |
+| work_temp            | Number:Temperature   | Custom - Work Temp                       |            |
+| appoint_time         | Number:Time          | Custom - Appoint Time                    |            |
+| food_quantity        | Number               | Custom - Food Quantity                   | Value mapping `["0"="Null","1"="Single","2"="Double","3"="Half","4"="Full"]` |
+| preheat_switch       | Number               | Custom - Preheat Switch                  | Value mapping `["0"="Null","1"="Off","2"="On"]` |
+| appoint_time_left    | Number:Time          | Custom - Appoint Time Left               |            |
+| recipe_sync          | String               | Custom - Recipe Sync                     |            |
+| turn_pot             | Number               | Custom - Turn Pot                        | Value mapping `["1"="Switch Off","0"="Not Turn Pot","2"="Turn Pot"]` |
 
 ### Qingping Air Monitor Lite (<a name="cgllc-airm-cgdn1">cgllc.airm.cgdn1</a>) Channels
 
@@ -576,6 +731,8 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | countdown            | Number:Time          | Imilab Timer - Countdown                 |            |
 | task-switch          | Switch               | Imilab Timer - Task Switch               |            |
 | countdown-info       | Switch               | Imilab Timer - Countdown Info            |            |
+| bt-gw                | String               | BT Gateway                               | Value mapping `["disable"="Disable","enable"="Enable"]` |
+| bt-gw-devices        | String               | Connected BT Gateway Devices             | Note, refreshes every 2nd refresh. Channel requires cloud connectivity to function. Sample widget to visualise the (json) output available from the widget market |
 
 ### Mi Smart Plug WiFi (<a name="chuangmi-plug-hmi205">chuangmi.plug.hmi205</a>) Channels
 
@@ -665,7 +822,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | sound                | Switch               | Notification Sounds                      |            |
 | watertankstatus      | Number               | Watertank Status                         |            |
 
-### Mi S Smart humidifer  (<a name="deerma-humidifier-jsq1">deerma.humidifier.jsq1</a>) Channels
+### Mi S Smart Humidifer  (<a name="deerma-humidifier-jsq1">deerma.humidifier.jsq1</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -677,6 +834,36 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | sound                | Switch               | Notification Sounds                      |            |
 | watertankstatus      | Number               | Watertank Status                         |            |
 | wet_and_protect      | Switch               | Wet and Protect                          |            |
+
+### Mi Smart Antibacterial Humidifier (<a name="deerma-humidifier-jsq5">deerma.humidifier.jsq5</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| on                   | Switch               | Humidifier - Switch Status               |            |
+| fault                | Number               | Humidifier - Device Fault                | Value mapping `["0"="No Faults","1"="Insufficient Water","2"="Water Separation"]` |
+| fan_level            | Number               | Humidifier - Fan Level                   | Value mapping `["1"="Level1","2"="Level2","3"="Level3","4"="Humidity"]` |
+| target_humidity      | Number:Dimensionless | Humidifier - Target Humidity             |            |
+| relative_humidity    | Number:Dimensionless | Environment - Relative Humidity          |            |
+| temperature          | Number:Temperature   | Environment - Temperature                |            |
+| alarm                | Switch               | Alarm - Alarm                            |            |
+| on1                  | Switch               | Indicator Light - Switch Status          |            |
+| water_shortage_fault | Switch               | Custom - Water Shortage Fault            |            |
+| the_tank_filed       | Switch               | Custom - The Tank Filed                  |            |
+
+### Mi Smart Humidifer S (<a name="deerma-humidifier-jsqs">deerma.humidifier.jsqs</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| on                   | Switch               | Humidifier - Switch Status               |            |
+| fault                | Number               | Humidifier - Device Fault                | Value mapping `["0"="No Faults","1"="Insufficient Water","2"="Water Separation"]` |
+| fan_level            | Number               | Humidifier - Fan Level                   | Value mapping `["1"="Level1","2"="Level2","3"="Level3","4"="Humidity"]` |
+| target_humidity      | Number:Dimensionless | Humidifier - Target Humidity             |            |
+| relative_humidity    | Number:Dimensionless | Environment - Relative Humidity          |            |
+| temperature          | Number:Temperature   | Environment - Temperature                |            |
+| alarm                | Switch               | Alarm - Alarm                            |            |
+| on1                  | Switch               | Indicator Light - Switch Status          |            |
+| water_shortage_fault | Switch               | Custom - Water Shortage Fault            |            |
+| the_tank_filed       | Switch               | Custom - The Tank Filed                  |            |
 
 ### Mi Smart Humidifier (<a name="deerma-humidifier-mjjsq">deerma.humidifier.mjjsq</a>) Channels
 
@@ -695,7 +882,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
 | power                | Switch               | Power                                    |            |
-| airFreshMode         | String               | Mode                                     |            |
+| airFreshMode         | String               | Mode                                     | Value mapping `["auto"="Auto","sleep"="Sleep","favourite"="Favorite"]` |
 | airFreshPTCPower     | Switch               | PTC                                      |            |
 | airFreshPTCStatus    | Switch               | PTC Status                               |            |
 | airFreshDisplay      | Switch               | Display                                  |            |
@@ -715,11 +902,11 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
 | power                | Switch               | Power                                    |            |
-| airFreshMode         | String               | Mode                                     |            |
+| airFreshMode         | String               | Mode                                     | Value mapping `["auto"="Auto","sleep"="Sleep","favourite"="Favorite"]` |
 | airFreshPTCPower     | Switch               | PTC                                      |            |
-| airFreshPtcLevel     | String               | PTC Level                                |            |
+| airFreshPtcLevel     | String               | PTC Level                                | Value mapping `["low"="Low","medium"="Medium","high"="High"]` |
 | airFreshPTCStatus    | Switch               | PTC Status                               |            |
-| airFreshDisplayDirection | String               | Screen direction                         |            |
+| airFreshDisplayDirection | String               | Screen direction                         | Value mapping `["forward"="Normal","left"="Left","right"="Right"]` |
 | airFreshDisplay      | Switch               | Display                                  |            |
 | airFreshChildLock    | Switch               | Child Lock                               |            |
 | airFreshSound        | Switch               | Sound                                    |            |
@@ -738,15 +925,12 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
-| Manufacturer         | String               | Device Information-Device Manufacturer   |            |
-| Model                | String               | Device Information-Device Model          |            |
-| SerialNumber         | String               | Device Information-Device Serial Number  |            |
-| FirmwareRevision     | String               | Device Information-Current Firmware Version |            |
-| On                   | Switch               | Fan-Switch Status                        |            |
-| FanLevel             | Number               | Fan-Fan Level                            |            |
+| actions              | String               | Actions                                  | Value mapping `["fan-toggle"="Fan Toggle"]` |
+| On                   | Switch               | Fan - Switch Status                      |            |
+| FanLevel             | Number               | Fan-Fan Level                            | Value mapping `["1"="Level1","2"="Level2","3"="Level3"]` |
 | HorizontalSwing      | Switch               | Fan-Horizontal Swing                     |            |
-| Mode                 | Number               | Fan-Mode                                 |            |
-| OffDelayTime         | Number               | Fan-Power Off Delay Time                 |            |
+| Mode                 | Number               | Fan-Mode                                 | Value mapping `["0"="Straight Wind","1"="Sleep"]` |
+| OffDelayTime         | Number:Time          | Fan-Power Off Delay Time                 |            |
 | Alarm                | Switch               | Fan-Alarm                                |            |
 | Brightness           | Switch               | Fan-Brightness                           |            |
 | PhysicalControlsLocked | Switch               | Physical Control Locked-Physical Control Locked |            |
@@ -769,15 +953,12 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
-| Manufacturer         | String               | Device Information-Device Manufacturer   |            |
-| Model                | String               | Device Information-Device Model          |            |
-| SerialNumber         | String               | Device Information-Device Serial Number  |            |
-| FirmwareRevision     | String               | Device Information-Current Firmware Version |            |
-| On                   | Switch               | Fan-Switch Status                        |            |
-| FanLevel             | Number               | Fan-Fan Level                            |            |
+| actions              | String               | Actions                                  | Value mapping `["fan-toggle"="Fan Toggle"]` |
+| On                   | Switch               | Fan - Switch Status                      |            |
+| FanLevel             | Number               | Fan-Fan Level                            | Value mapping `["1"="Level1","2"="Level2","3"="Level3"]` |
 | HorizontalSwing      | Switch               | Fan-Horizontal Swing                     |            |
-| Mode                 | Number               | Fan-Mode                                 |            |
-| OffDelayTime         | Number               | Fan-Power Off Delay Time                 |            |
+| Mode                 | Number               | Fan-Mode                                 | Value mapping `["0"="Straight Wind","1"="Sleep"]` |
+| OffDelayTime         | Number:Time          | Fan-Power Off Delay Time                 |            |
 | Alarm                | Switch               | Fan-Alarm                                |            |
 | Brightness           | Switch               | Fan-Brightness                           |            |
 | PhysicalControlsLocked | Switch               | Physical Control Locked-Physical Control Locked |            |
@@ -786,17 +967,14 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
-| Manufacturer         | String               | Device Information-Device Manufacturer   |            |
-| Model                | String               | Device Information-Device Model          |            |
-| SerialNumber         | String               | Device Information-Device Serial Number  |            |
-| FirmwareRevision     | String               | Device Information-Current Firmware Version |            |
+| actions              | String               | Actions                                  | Value mapping `["fan-toggle"="Fan Toggle"]` |
 | On                   | Switch               | Fan-Switch Status                        |            |
-| FanLevel             | Number               | Fan-Fan Level                            |            |
-| Mode                 | Number               | Fan-Mode                                 |            |
+| FanLevel             | Number               | Fan-Fan Level                            | Value mapping `["1"="Level1","2"="Level2","3"="Level3","4"="Level4"]` |
+| Mode                 | Number               | Fan-Mode                                 | Value mapping `["0"="Straight Wind","1"="Natural Wind","2"="Sleep"]` |
 | HorizontalSwing      | Switch               | Fan-Horizontal Swing                     |            |
-| HorizontalAngle      | Number               | Fan-Horizontal Angle                     |            |
+| HorizontalAngle      | Number               | Fan-Horizontal Angle                     | Value mapping `["30"="30","60"="60","90"="90","120"="120","150"="150"]` |
 | Alarm                | Switch               | Fan-Alarm                                |            |
-| OffDelayTime         | Number               | Fan-Power Off Delay Time                 |            |
+| OffDelayTime         | Number:Time          | Fan - Power Off Delay Time               |            |
 | Brightness           | Switch               | Fan-Brightness                           |            |
 | MotorControl         | Number               | Fan-Motor Control                        |            |
 | SpeedLevel           | Number               | Fan-Speed Level                          |            |
@@ -806,21 +984,52 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
-| Manufacturer         | String               | Device Information-Device Manufacturer   |            |
-| Model                | String               | Device Information-Device Model          |            |
-| SerialNumber         | String               | Device Information-Device Serial Number  |            |
-| FirmwareRevision     | String               | Device Information-Current Firmware Version |            |
+| actions              | String               | Actions                                  | Value mapping `["fan-toggle"="Fan Toggle"]` |
 | On                   | Switch               | Fan-Switch Status                        |            |
-| FanLevel             | Number               | Fan-Fan Level                            |            |
-| Mode                 | Number               | Fan-Mode                                 |            |
+| FanLevel             | Number               | Fan-Fan Level                            | Value mapping `["1"="Level1","2"="Level2","3"="Level3","4"="Level4"]` |
+| Mode                 | Number               | Fan-Mode                                 | Value mapping `["0"="Straight Wind","1"="Natural Wind","2"="Sleep"]` |
 | HorizontalSwing      | Switch               | Fan-Horizontal Swing                     |            |
-| HorizontalAngle      | Number               | Fan-Horizontal Angle                     |            |
+| HorizontalAngle      | Number               | Fan-Horizontal Angle                     | Value mapping `["30"="30","60"="60","90"="90","120"="120","150"="150"]` |
 | Alarm                | Switch               | Fan-Alarm                                |            |
-| OffDelayTime         | Number               | Fan-Power Off Delay Time                 |            |
+| OffDelayTime         | Number:Time          | Fan - Power Off Delay Time               |            |
 | Brightness           | Switch               | Fan-Brightness                           |            |
 | MotorControl         | Number               | Fan-Motor Control                        |            |
 | SpeedLevel           | Number               | Fan-Speed Level                          |            |
 | PhysicalControlsLocked | Switch               | Physical Control Locked-Physical Control Locked |            |
+
+### Mi Smart Standing Fan Pro (<a name="dmaker-fan-p15">dmaker.fan.p15</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| on                   | Switch               | Fan - Switch Status                      |            |
+| fan_level            | Number               | Fan - Gear Fan Level                     | Value mapping `["1"="Level1","2"="Level2","3"="Level3","4"="Level4"]` |
+| mode                 | Number               | Fan - Mode                               | Value mapping `["0"="Straight Wind","1"="Natural Wind"]` |
+| horizontal_swing     | Switch               | Fan - Horizontal Swing                   |            |
+| horizontal_angle     | Number               | Fan - Horizontal Angle                   | Value mapping `["30"="30","60"="60","90"="90","120"="120","140"="140"]` |
+| status               | Number               | Fan - Status                             |            |
+| on1                  | Switch               | Indicator Light - Switch Status          |            |
+| alarm                | Switch               | Alarm - Alarm                            |            |
+| fault                | Number               | Motor Controller - Device Fault          | Value mapping `["0"="No Faults"]` |
+| physical_controls_locked | Switch               | Physical Control Locked - Physical Control Locked |            |
+| off_delay_time       | Number:Time          | Off Delay Time - Off Delay Time          |            |
+| actions              | String               | Actions                                  | Value mapping `["off-delay-time-toggle"="Off Delay Time Toggle"]` |
+
+### Mi Smart Standing Fan 2 (<a name="dmaker-fan-p18">dmaker.fan.p18</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| actions              | String               | Actions                                  | Value mapping `["fan-toggle"="Fan Toggle"]` |
+| on                   | Switch               | Fan - Switch Status                      |            |
+| fan_level            | Number               | Fan - Fan Level                          | Value mapping `["1"="Level1","2"="Level2","3"="Level3","4"="Level4"]` |
+| mode                 | Number               | Fan - Mode                               | Value mapping `["0"="Straight Wind","1"="Natural Wind"]` |
+| horizontal_swing     | Switch               | Fan - Horizontal Swing                   |            |
+| horizontal_angle     | Number               | Fan - Horizontal Angle                   | Value mapping `["30"="30","60"="60","90"="90","120"="120","140"="140"]` |
+| off_delay_time       | Number:Time          | Fan - Power Off Delay Time               |            |
+| brightness           | Switch               | Fan - Brightness                         |            |
+| alarm                | Switch               | Fan - Alarm                              |            |
+| motor_control        | Number               | Fan - Motor Control                      | Value mapping `["0"="NO","1"="LEFT","2"="RIGHT"]` |
+| speed_level          | Number               | Fan - Speed Level                        |            |
+| physical_controls_locked | Switch               | Physical Control Locked - Physical Control Locked |            |
 
 ### Mi Robot Vacuum Mop 1C STYTJ01ZHM (<a name="dreame-vacuum-mc1808">dreame.vacuum.mc1808</a>) Channels
 
@@ -829,14 +1038,15 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | vacuumaction         | String               | Vacuum Action                            | Value mapping `["vacuum"="Vacuum","stop"="Stop","sweep"="Sweep","stopsweep"="Stop Sweep","dock"="Goto Dock"]` |
 | BatteryLevel         | Number               | Battery-Battery Level                    |            |
 | ChargingState        | Number               | Battery-Charging State                   | Value mapping `["1"="Charging","2"="Not Charging","4"="Charging","5"="Go Charging"]` |
+| water-mode           | Number               | Water Mode                               | Value mapping `["1"="Low","2"="Medium","4"="High"]` |
 | Fault                | Number               | Robot Cleaner-Device Fault               | Value mapping `["0"="No faults"]` |
 | Status               | Number               | Robot Cleaner-Status                     | Value mapping `["1"="Sweeping","2"="Idle","3"="Paused","4"="Error","5"="Go Charging","6"="Charging"]` |
 | BrushLeftTime        | Number:Time          | Main Cleaning Brush-Brush Left Time      |            |
-| BrushLifeLevel       | Number               | Main Cleaning Brush-Brush Life Level     |            |
-| FilterLifeLevel      | Number               | Filter - Filter Life Level               |            |
+| BrushLifeLevel       | Number:Dimensionless | Main Cleaning Brush-Brush Life Level     |            |
+| FilterLifeLevel      | Number:Dimensionless | Filter - Filter Life Level               |            |
 | FilterLeftTime       | Number:Time          | Filter-Filter Left Time                  |            |
 | BrushLeftTime1       | Number:Time          | Side Cleaning Brush-Brush Left Time      |            |
-| BrushLifeLevel1      | Number               | Side Cleaning Brush-Brush Life Level     |            |
+| BrushLifeLevel1      | Number:Dimensionless | Side Cleaning Brush-Brush Life Level     |            |
 | WorkMode             | Number               | clean-workmode                           |            |
 | Area                 | String               | clean-area                               |            |
 | Timer                | String               | clean-timer                              |            |
@@ -936,6 +1146,111 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | total-clean-time     | Number:Time          | Clean Logs - Total Clean Time            |            |
 | total-clean-times    | Number               | Clean Logs - Total Clean Times           |            |
 | total-clean-area     | Number               | Clean Logs - Total Clean Area            |            |
+
+### Dreame Bot W10 (<a name="dreame-vacuum-p2027">dreame.vacuum.p2027</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| actions              | String               | Actions                                  | Value mapping `["vacuum-start-sweep"="Vacuum Start Sweep","vacuum-stop-sweeping"="Vacuum Stop Sweeping","vacuum-start-room-sweep"="Vacuum Start Room Sweep","battery-start-charge"="Battery Start Charge","brush-cleaner-reset-brush-life"="Brush Cleaner Reset Brush Life","brush-cleaner-reset-brush-life"="Brush Cleaner Reset Brush Life","filter-reset-filter-life"="Filter Reset Filter Life","vacuum-extend-start-clean"="Vacuum Extend Start Clean","vacuum-extend-stop-clean"="Vacuum Extend Stop Clean","map-map-req"="Map Map Req","map-update-map"="Map Update Map","audio-position"="Audio Position","audio-play-sound"="Audio Play Sound","time-delete-timer"="Time Delete Timer"]` |
+| status               | Number               | Robot Cleaner - Status                   | Value mapping `["1"="Sweeping","2"="Idle","3"="Paused","4"="Error","5"="Go Charging","6"="Charging","7"="Mopping","8"="Drying","9"="Washing","10"="Go Washing","11"="Building","12"="Sweeping and Mopping","13"="Charging Completed"]` |
+| fault                | Number               | Robot Cleaner - Device Fault             | Value mapping `["0"="No Error","1"="Drop","2"="Cliff","3"="Bumper","4"="Gesture","5"="Bumper Repeat","6"="Drop Repeat","7"="Optical Flow","8"="No Box","9"="No Tankbox","10"="Waterbox Empty","11"="Box full","12"="Brush","13"="Side Brush","14"="Fan","15"="Left Wheel motor","16"="Right Wheel motor","17"="Turn suffocate","18"="Forward suffocate","19"="Charger get","20"="Battery low","21"="Charge fault","22"="Battery percentage","23"="Heart","24"="Camera occlusion","25"="Camera fault","26"="Event battery","27"="Forward looking","28"="Gyroscope"]` |
+| mode                 | Number               | Robot Cleaner - Mode                     | Value mapping `["0"="Silent","1"="Basic","2"="Strong","3"="Full Speed"]` |
+| battery_level        | Number:Dimensionless | Battery - Battery Level                  |            |
+| charging_state       | Number               | Battery - Charging State                 | Value mapping `["1"="Charging","2"="Not Charging","5"="Go Charging"]` |
+| brush_left_time      | Number:Time          | Main Cleaning Brush - Brush Left Time    |            |
+| brush_life_level     | Number:Dimensionless | Main Cleaning Brush - Brush Life Level   |            |
+| brush_left_time1     | Number:Time          | Side Cleaning Brush - Brush Left Time    |            |
+| brush_life_level1    | Number:Dimensionless | Side Cleaning Brush - Brush Life Level   |            |
+| filter_life_level    | Number:Dimensionless | Filter - Filter Life Level               |            |
+| filter_left_time     | Number:Time          | Filter - Filter Left Time                |            |
+| work_mode            | Number               | Vacuum Extend - Work Mode                |            |
+| cleaning_time        | Number:Time          | Vacuum Extend - Cleaning Time            |            |
+| cleaning-area        | Number:Area          | Vacuum Extend - Cleaning Area            |            |
+| cleaning_mode        | Number               | Vacuum Extend - Cleaning Mode            | Value mapping `["0"="mode 0","1"="mode 1","2"="mode 2","3"="mode 3"]` |
+| mop_mode             | Number               | Vacuum Extend - Mop Mode                 | Value mapping `["1"="low water","2"="medium water","3"="high water"]` |
+| waterbox_status      | Number               | Vacuum Extend - Waterbox Status          | Value mapping `["0"="Status 0","1"="Status 1"]` |
+| task_status          | Number               | Vacuum Extend - Task Status              | Value mapping `["0"="Notask","1"="AutoClean","2"="CustomClean","3"="SelectAreanClean","4"="SpotArea"]` |
+| clean_extend_data    | String               | Vacuum Extend - Clean Extend Data        |            |
+| break_point_restart  | Number               | Vacuum Extend - Break Point Restart      | Value mapping `["0"="Off","1"="On"]` |
+| carpet_press         | Number               | Vacuum Extend - Carpet Press             | Value mapping `["0"="Off","1"="On"]` |
+| remote_state         | String               | Vacuum Extend - Remote State             |            |
+| clean_rags_tip       | Number:Time          | Vacuum Extend - Clean Rags Tip           |            |
+| keep_sweeper_time    | Number:Time          | Vacuum Extend - Keep Sweeper Time        |            |
+| faults               | String               | Vacuum Extend - Faults                   |            |
+| nation_matched       | String               | Vacuum Extend - Nation Matched           |            |
+| relocation_status    | Number               | Vacuum Extend - Relocation Status        |            |
+| mop_status           | Number               | Vacuum Extend - Mop Status               |            |
+| child_lock           | Number               | Vacuum Extend - Child Lock               | Value mapping `["0"="Close","1"="Open"]` |
+| clean_cancel         | Number               | Vacuum Extend - Clean Cancel             |            |
+| enable               | Switch               | Do Not Disturb - Enable                  |            |
+| start_time           | String               | Do Not Disturb - Start Time              |            |
+| end_time             | String               | Do Not Disturb - End Time                |            |
+| frame_info           | String               | Map - Frame Info                         |            |
+| map_extend_data      | String               | Map - Map Extend Data                    |            |
+| mult_map_state       | Number               | Map - Mult Map State                     | Value mapping `["0"="Close","1"="Open"]` |
+| mult_map_info        | String               | Map - Mult Map Info                      |            |
+| volume               | Number:Dimensionless | Audio - Volume                           |            |
+| voice_packet_id      | String               | Audio - Voice Packet Id                  |            |
+| voice_change_state   | String               | Audio - Voice Change State               |            |
+| set_voice            | String               | Audio - Set Voice                        |            |
+| time_zone            | String               | Time - Time Zone                         |            |
+| timer_clean          | String               | Time - Timer Clean                       |            |
+| first_clean_time     | Number               | Clean Logs - First Clean Time            |            |
+| total_clean_time     | Number:Time          | Clean Logs - Total Clean Time            |            |
+| total_clean_times    | Number               | Clean Logs - Total Clean Times           |            |
+| total_clean_area     | Number               | Clean Logs - Total Clean Area            |            |
+
+### Dreame Bot Z10 Pro (<a name="dreame-vacuum-p2028">dreame.vacuum.p2028</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| actions              | String               | Actions                                  | Value mapping `["vacuum-start-sweep"="Vacuum Start Sweep","vacuum-stop-sweeping"="Vacuum Stop Sweeping","battery-start-charge"="Battery Start Charge","brush-cleaner-reset-brush-life"="Brush Cleaner Reset Brush Life","brush-cleaner-reset-brush-life"="Brush Cleaner Reset Brush Life","filter-reset-filter-life"="Filter Reset Filter Life","vacuum-extend-start-clean"="Vacuum Extend Start Clean","vacuum-extend-stop-clean"="Vacuum Extend Stop Clean","map-map-req"="Map Map Req","map-update-map"="Map Update Map","audio-position"="Audio Position","audio-play-sound"="Audio Play Sound","time-delete-timer"="Time Delete Timer","collect-dust-start-collect"="Collect Dust Start Collect"]` |
+| status               | Number               | Robot Cleaner - Status                   | Value mapping `["1"="Sweeping","2"="Idle","3"="Paused","4"="Error","5"="Go Charging","6"="Charging","7"="Mopping"]` |
+| fault                | Number               | Robot Cleaner - Device Fault             | Value mapping `["0"="No Error","1"="Drop","2"="Cliff","3"="Bumper","4"="Gesture","5"="Bumper Repeat","6"="Drop Repeat","7"="Optical Flow","8"="No Box","9"="No Tankbox","10"="Waterbox Empty","11"="Box full","12"="Brush","13"="Side Brush","14"="Fan","15"="Left Wheel motor","16"="Right Wheel motor","17"="Turn suffocate","18"="Forward suffocate","19"="Charger get","20"="Battery low","21"="Charge fault","22"="Battery percentage","23"="Heart","24"="Camera occlusion","25"="Camera fault","26"="Event battery","27"="Forward looking","28"="Gyroscope"]` |
+| battery_level        | Number:Dimensionless | Battery - Battery Level                  |            |
+| charging_state       | Number               | Battery - Charging State                 | Value mapping `["1"="Charging","2"="Not Charging","5"="Go Charging"]` |
+| brush_left_time      | Number:Time          | Main Cleaning Brush - Brush Left Time    |            |
+| brush_life_level     | Number:Dimensionless | Main Cleaning Brush - Brush Life Level   |            |
+| brush_left_time1     | Number:Time          | Side Cleaning Brush - Brush Left Time    |            |
+| brush_life_level1    | Number:Dimensionless | Side Cleaning Brush - Brush Life Level   |            |
+| filter_life_level    | Number:Dimensionless | Filter - Filter Life Level               |            |
+| filter_left_time     | Number:Time          | Filter - Filter Left Time                |            |
+| work_mode            | Number               | Vacuum Extend - Work Mode                |            |
+| cleaning_time        | Number:Time          | Vacuum Extend - Cleaning Time            |            |
+| cleaning-area        | Number:Area          | Vacuum Extend - Cleaning Area            |            |
+| cleaning_mode        | Number               | Vacuum Extend - Cleaning Mode            | Value mapping `["0"="mode 0","1"="mode 1","2"="mode 2","3"="mode 3"]` |
+| mop_mode             | Number               | Vacuum Extend - Mop Mode                 | Value mapping `["1"="low water","2"="medium water","3"="high water"]` |
+| waterbox_status      | Number               | Vacuum Extend - Waterbox Status          | Value mapping `["0"="Status 0","1"="Status 1"]` |
+| task_status          | Number               | Vacuum Extend - Task Status              | Value mapping `["0"="Notask","1"="AutoClean","2"="CustomClean","3"="SelectAreanClean","4"="SpotArea"]` |
+| clean_extend_data    | String               | Vacuum Extend - Clean Extend Data        |            |
+| break_point_restart  | Number               | Vacuum Extend - Break Point Restart      | Value mapping `["0"="Off","1"="On"]` |
+| carpet_press         | Number               | Vacuum Extend - Carpet Press             | Value mapping `["0"="Off","1"="On"]` |
+| remote_state         | String               | Vacuum Extend - Remote State             |            |
+| clean_rags_tip       | Number:Time          | Vacuum Extend - Clean Rags Tip           |            |
+| keep_sweeper_time    | Number:Time          | Vacuum Extend - Keep Sweeper Time        |            |
+| faults               | String               | Vacuum Extend - Faults                   |            |
+| nation_matched       | String               | Vacuum Extend - Nation Matched           |            |
+| relocation_status    | Number               | Vacuum Extend - Relocation Status        |            |
+| enable               | Switch               | Do Not Disturb - Enable                  |            |
+| start_time           | String               | Do Not Disturb - Start Time              |            |
+| end_time             | String               | Do Not Disturb - End Time                |            |
+| frame_info           | String               | Map - Frame Info                         |            |
+| map_extend_data      | String               | Map - Map Extend Data                    |            |
+| mult_map_state       | Number               | Map - Mult Map State                     | Value mapping `["0"="Close","1"="Open"]` |
+| mult_map_info        | String               | Map - Mult Map Info                      |            |
+| volume               | Number:Dimensionless | Audio - Volume                           |            |
+| voice_packet_id      | String               | Audio - Voice Packet Id                  |            |
+| voice_change_state   | String               | Audio - Voice Change State               |            |
+| set_voice            | String               | Audio - Set Voice                        |            |
+| time_zone            | String               | Time - Time Zone                         |            |
+| timer_clean          | String               | Time - Timer Clean                       |            |
+| first_clean_time     | Number               | Clean Logs - First Clean Time            |            |
+| total_clean_time     | Number:Time          | Clean Logs - Total Clean Time            |            |
+| total_clean_times    | Number               | Clean Logs - Total Clean Times           |            |
+| total_clean_area     | Number               | Clean Logs - Total Clean Area            |            |
+| auto_collect         | Number               | Collect Dust - Auto Collect              | Value mapping `["0"="Close-auto-collect","1"="Open-auto-collect"]` |
+| clean_times          | Number               | Collect Dust - Clean Times               |            |
+| dust_enable          | Number               | Collect Dust - Dust Enable               | Value mapping `["0"="Disable","1"="Enable"]` |
 
 ### Trouver Robot LDS Vacuum-Mop Finder (<a name="dreame-vacuum-p2036">dreame.vacuum.p2036</a>) Channels
 
@@ -1104,6 +1419,54 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | total-clean-time     | Number:Time          | Clean Logs - Total Clean Time            |            |
 | total-clean-times    | Number               | Clean Logs - Total Clean Times           |            |
 | total-clean-area     | Number               | Clean Logs - Total Clean Area            |            |
+
+### Dreame Bot D9 Max (<a name="dreame-vacuum-p2259">dreame.vacuum.p2259</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| actions              | String               | Actions                                  | Value mapping `["vacuum-start-sweep"="Vacuum Start Sweep","vacuum-stop-sweeping"="Vacuum Stop Sweeping","vacuum-start-room-sweep"="Vacuum Start Room Sweep","battery-start-charge"="Battery Start Charge","brush-cleaner-reset-brush-life"="Brush Cleaner Reset Brush Life","brush-cleaner-reset-brush-life"="Brush Cleaner Reset Brush Life","filter-reset-filter-life"="Filter Reset Filter Life","vacuum-extend-start-clean"="Vacuum Extend Start Clean","vacuum-extend-stop-clean"="Vacuum Extend Stop Clean","map-map-req"="Map Map Req","map-update-map"="Map Update Map","audio-position"="Audio Position","audio-play-sound"="Audio Play Sound","time-delete-timer"="Time Delete Timer"]` |
+| status               | Number               | Robot Cleaner - Status                   | Value mapping `["1"="Sweeping","2"="Idle","3"="Paused","4"="Error","5"="Go Charging","6"="Charging","7"="Mopping"]` |
+| fault                | Number               | Robot Cleaner - Device Fault             | Value mapping `["0"="No Error","1"="Drop","2"="Cliff","3"="Bumper","4"="Gesture","5"="Bumper Repeat","6"="Drop Repeat","7"="Optical Flow","8"="No Box","9"="No Tankbox","10"="Waterbox Empty","11"="Box full","12"="Brush","13"="Side Brush","14"="Fan","15"="Left Wheel motor","16"="Right Wheel motor","17"="Turn suffocate","18"="Forward suffocate","19"="Charger get","20"="Battery low","21"="Charge fault","22"="Battery percentage","23"="Heart","24"="Camera occlusion","25"="Camera fault","26"="Event battery","27"="Forward looking","28"="Gyroscope"]` |
+| mode                 | Number               | Robot Cleaner - Mode                     | Value mapping `["0"="Silent","1"="Basic","2"="Strong","3"="Full Speed"]` |
+| battery_level        | Number:Dimensionless | Battery - Battery Level                  |            |
+| charging_state       | Number               | Battery - Charging State                 | Value mapping `["1"="Charging","2"="Not Charging","5"="Go Charging"]` |
+| brush_left_time      | Number:Time          | Main Cleaning Brush - Brush Left Time    |            |
+| brush_life_level     | Number:Dimensionless | Main Cleaning Brush - Brush Life Level   |            |
+| brush_left_time1     | Number:Time          | Side Cleaning Brush - Brush Left Time    |            |
+| brush_life_level1    | Number:Dimensionless | Side Cleaning Brush - Brush Life Level   |            |
+| filter_life_level    | Number:Dimensionless | Filter - Filter Life Level               |            |
+| filter_left_time     | Number:Time          | Filter - Filter Left Time                |            |
+| work_mode            | Number               | Vacuum Extend - Work Mode                |            |
+| cleaning_time        | Number:Time          | Vacuum Extend - Cleaning Time            |            |
+| cleaning_area        | Number:Area          | Vacuum Extend - Cleaning Area            |            |
+| cleaning_mode        | Number               | Vacuum Extend - Cleaning Mode            | Value mapping `["0"="mode 0","1"="mode 1","2"="mode 2","3"="mode 3"]` |
+| mop_mode             | Number               | Vacuum Extend - Mop Mode                 | Value mapping `["1"="low water","2"="medium water","3"="high water"]` |
+| waterbox_status      | Number               | Vacuum Extend - Waterbox Status          | Value mapping `["0"="Status 0","1"="Status 1"]` |
+| task_status          | Number               | Vacuum Extend - Task Status              | Value mapping `["0"="Notask","1"="AutoClean","2"="CustomClean","3"="SelectAreanClean","4"="SpotArea"]` |
+| clean_extend_data    | String               | Vacuum Extend - Clean Extend Data        |            |
+| break_point_restart  | Number               | Vacuum Extend - Break Point Restart      | Value mapping `["0"="Off","1"="On"]` |
+| carpet_press         | Number               | Vacuum Extend - Carpet Press             | Value mapping `["0"="Off","1"="On"]` |
+| remote_state         | String               | Vacuum Extend - Remote State             |            |
+| clean_rags_tip       | Number:Time          | Vacuum Extend - Clean Rags Tip           |            |
+| keep_sweeper_time    | Number:Time          | Vacuum Extend - Keep Sweeper Time        |            |
+| faults               | String               | Vacuum Extend - Faults                   |            |
+| enable               | Switch               | Do Not Disturb - Enable                  |            |
+| start_time           | String               | Do Not Disturb - Start Time              |            |
+| end_time             | String               | Do Not Disturb - End Time                |            |
+| frame_info           | String               | Map - Frame Info                         |            |
+| map_extend_data      | String               | Map - Map Extend Data                    |            |
+| mult_map_state       | Number               | Map - Mult Map State                     | Value mapping `["0"="Close","1"="Open"]` |
+| mult_map_info        | String               | Map - Mult Map Info                      |            |
+| volume               | Number:Dimensionless | Audio - Volume                           |            |
+| voice_packet_id      | String               | Audio - Voice Packet Id                  |            |
+| voice_change_state   | String               | Audio - Voice Change State               |            |
+| set_voice            | String               | Audio - Set Voice                        |            |
+| time_zone            | String               | Time - Time Zone                         |            |
+| timer_clean          | String               | Time - Timer Clean                       |            |
+| first_clean_time     | Number               | Clean Logs - First Clean Time            |            |
+| total_clean_time     | Number:Time          | Clean Logs - Total Clean Time            |            |
+| total_clean_times    | Number               | Clean Logs - Total Clean Times           |            |
+| total_clean_area     | Number               | Clean Logs - Total Clean Area            |            |
 
 ### HUIZUO ARIES For Bedroom (<a name="huayi-light-ari013">huayi.light.ari013</a>) Channels
 
@@ -1283,19 +1646,77 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Light - Brightness                       |            |
 | color-temperature    | Number:Temperature   | Light - Color Temperature                |            |
 
+### IKEA E27 white spectrum opal (<a name="ikea-light-led1545g12">ikea.light.led1545g12</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| colour_temperature   | Number               | Color Temperature                        |            |
+
+### IKEA E27 white spectrum clear (<a name="ikea-light-led1546g12">ikea.light.led1546g12</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| colour_temperature   | Number               | Color Temperature                        |            |
+
+### IKEA E14 white spectrum (<a name="ikea-light-led1536g5">ikea.light.led1536g5</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| colour_temperature   | Number               | Color Temperature                        |            |
+
+### IKEA GU10 white spectrum (<a name="ikea-light-led1537r6">ikea.light.led1537r6</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| colour_temperature   | Number               | Color Temperature                        |            |
+
+### IKEA E27 warm white (<a name="ikea-light-led1623g12">ikea.light.led1623g12</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| colour_temperature   | Number               | Color Temperature                        |            |
+
+### IKEA GU10 warm white (<a name="ikea-light-led1650r5">ikea.light.led1650r5</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| colour_temperature   | Number               | Color Temperature                        |            |
+
+### IKEA E14 warm white (<a name="ikea-light-led1649c5">ikea.light.led1649c5</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| colour_temperature   | Number               | Color Temperature                        |            |
+
 ### Xiaomiyoupin Curtain Controller (Wi-Fi) (<a name="lumi-curtain-hagl05">lumi.curtain.hagl05</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
 | fault                | Number               | Curtain - Device Fault                   | Value mapping `["0"="No faults"]` |
-| current-position     | Number               | Curtain - Current Position               |            |
+| motor_control        | Number               | Curtain - Motor Control                  | Value mapping `["0"="Pause","1"="Open","2"="Close","3"="auto"]` |
+| current-position     | Number:Dimensionless | Curtain - Current Position               |            |
 | status               | Number               | Curtain - Status                         | Value mapping `["0"="Stopped","1"="Opening","2"="Closing"]` |
-| target-position      | Number               | Curtain - Target Position                |            |
+| target-position      | Number:Dimensionless | Curtain - Target Position                |            |
 | manual-enabled       | Number               | curtain_cfg - Manual Enabled             | Value mapping `["0"="Disable","1"="Enable"]` |
-| polarity             | Number               | curtain_cfg - Polarity                   | Value mapping `["0"="Positive","1"="Reverse"]` |
+| polarity             | Number               | Curtain_cfg - Polarity                   | Value mapping `["0"="Positive","1"="Reverse"]` |
 | pos-limit            | Number               | curtain_cfg - Position Limit             | Value mapping `["0"="Unlimit","1"="Limit"]` |
-| en-night-tip-light   | Switch               | Set Night Tip Light                      | Value mapping `["0"="Disable","1"="Enable"]` |
-| run-time             | Number               | curtain_cfg - Run-time                   |            |
+| en_night_tip_light   | Number               | Curtain_cfg - En_night_tip_light         | Value mapping `["0"="Disable","1"="Enable"]` |
+| run-time             | Number               | Curtain_cfg - Run-time                   |            |
+| adjust_value         | Number               | Motor_controller - Adjust_value          |            |
 
 ### Mi Air Purifier virtual (<a name="lumi-gateway-mgl03">lumi.gateway.mgl03</a>) Channels
 
@@ -1306,6 +1727,24 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | gatewayVol           | Number               | Gateway Volume                           |            |
 | alarmingVol          | Number               | Alarming Volume                          |            |
 | doorbellPush         | String               | Doorbell Push                            |            |
+
+### Mi smart Home Gateway Hub (<a name="lumi-gateway-mieu01">lumi.gateway.mieu01</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| guard                | Switch               | Guard                                    |            |
+| corridor             | Switch               | Automatic Night Light                    |            |
+| nightlight           | Color                | Night Light                              |            |
+| rgb                  | Color                | Colored Light                            |            |
+| doorbell_volume      | Number               | Doorbell Volume                          |            |
+| alarming_volume      | Number               | Alarming Volume                          |            |
+| gateway_volume       | Number               | Gateway Volume                           |            |
+| arming_time          | Number:Time          | Arming Time                              |            |
+| corridor_on_time     | Number:Time          | Corridor on time                         |            |
+| language             | String               | Voice prompt Language                    |            |
+| zigbee_channel       | String               | Zigbee Channel                           |            |
+| lumi_bind            | String               | Lumi_bind info                           |            |
+| doorbell_push        | String               | Doorbell Push                            |            |
 
 ### Mi smart Home Gateway Hub v1 (<a name="lumi-gateway-v1">lumi.gateway.v1</a>) Channels
 
@@ -1327,7 +1766,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | alarmingVol          | Number               | Alarming Volume                          |            |
 | doorbellPush         | String               | Doorbell Push                            |            |
 
-### Mi mart Home Gateway Hub v3 (<a name="lumi-gateway-v3">lumi.gateway.v3</a>) Channels
+### Mi smart Home Gateway Hub v3 (<a name="lumi-gateway-v3">lumi.gateway.v3</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1336,6 +1775,93 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | gatewayVol           | Number               | Gateway Volume                           |            |
 | alarmingVol          | Number               | Alarming Volume                          |            |
 | doorbellPush         | String               | Doorbell Push                            |            |
+
+### Aqara LED Light Bulb (Tunable White) (<a name="lumi-light-aqcn02">lumi.light.aqcn02</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| colour_temperature   | Number               | Color Temperature                        |            |
+
+### Door lock (<a name="lumi-lock-v1">lumi.lock.v1</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| status               | String               | Status                                   |            |
+| log                  | String               | Device Log                               | This channel uses cloud to get data. See widget market place for suitable widget to display the data |
+
+### Aqara Door Lock (<a name="lumi-lock-aq1">lumi.lock.aq1</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| status               | String               | Status                                   |            |
+| log                  | String               | Device Log                               | This channel uses cloud to get data. See widget market place for suitable widget to display the data |
+
+### Aqara Door Lock S2 (<a name="lumi-lock-acn02">lumi.lock.acn02</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| status               | String               | Status                                   |            |
+| log                  | String               | Device Log                               | This channel uses cloud to get data. See widget market place for suitable widget to display the data |
+
+### Aqara Door lock S2 Pro (<a name="lumi-lock-acn03">lumi.lock.acn03</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| status               | String               | Status                                   |            |
+| log                  | String               | Device Log                               | This channel uses cloud to get data. See widget market place for suitable widget to display the data |
+
+### Mi Smart Plug (Zigbee) (<a name="lumi-plug-mmeu01">lumi.plug.mmeu01</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| load_power           | Number               | Load Power                               |            |
+| en_night_tip_light   | Switch               | Led Light                                |            |
+| poweroff_memory      | Switch               | Poweroff Memory                          |            |
+| max_power            | Number               | Max Power                                |            |
+| log                  | String               | Device Log                               | This channel uses cloud to get data. See widget market place for suitable widget to display the data. |
+
+### Mi Window and Door Sensor (<a name="lumi-sensor_magnet-v2">lumi.sensor_magnet.v2</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| log                  | String               | Device Log                               | This channel uses cloud to get data. See widget market place for suitable widget to display the data. |
+
+### Mi Motion Sensor (<a name="lumi-sensor_motion-aq2">lumi.sensor_motion.aq2</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| log                  | String               | Device Log                               | This channel uses cloud to get data. See widget market place for suitable widget to display the data |
+
+### Mi Motion Sensor (<a name="lumi-sensor_motion-v2">lumi.sensor_motion.v2</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| log                  | String               | Device Log                               | This channel uses cloud to get data. See widget market place for suitable widget to display the data |
+
+### Mi Temperature and Humidity Sensor (<a name="lumi-sensor_ht-v1">lumi.sensor_ht.v1</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| temperature          | Number:Temperature   | Temperature                              |            |
+| humidity             | Number:Dimensionless | Humidity                                 |            |
+
+### Water Leak Sensor (<a name="lumi-sensor_wleak-aq1">lumi.sensor_wleak.aq1</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| leak                 | Switch               | Leaking                                  |            |
+| log                  | String               | Device Log                               | This channel uses cloud to get data. See widget market place for suitable widget to display the data |
+
+### Aqara Temperature and Humidity Sensor (<a name="lumi-weather-v1">lumi.weather.v1</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| temperature          | Number:Temperature   | Temperature                              |            |
+| humidity             | Number:Dimensionless | Humidity                                 |            |
+| pressure             | Number:Pressure      | pressure                                 |            |
 
 ### Mi Robot Vacuum-Mop Essential (<a name="mijia-vacuum-v2">mijia.vacuum.v2</a>) Channels
 
@@ -1347,19 +1873,20 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | mode                 | Number               | Robot Cleaner - Mode                     | Value mapping `["1"="Auto-clean","2"="Spot-clean","3"="Wallflow-clean"]` |
 | target-water-level   | Number               | Robot Cleaner - Target Water Level       | Value mapping `["1"="Level1","2"="Level2","3"="Level3"]` |
 | fan-level            | Number               | Robot Cleaner - Fan Level                | Value mapping `["0"="Silence","1"="Stanrd","2"="Middle","3"="Enchance"]` |
-| battery-level        | Number               | Battery - Battery Level                  |            |
+| battery-level        | Number:Dimensionless | Battery - Battery Level                  |            |
 | charging-state       | Number               | Battery - Charging State                 | Value mapping `["0"="Not-charging","1"="Charging","2"="Charging-competely"]` |
 | alarm                | Switch               | Alarm - Alarm                            |            |
-| volume               | Number               | Alarm - Volume                           |            |
-| filter-life-level    | Number               | Filter - Filter Life Level               |            |
-| filter-left-time     | Number               | Filter - Filter Left Time                |            |
-| brush-life-level     | Number               | Brush Cleaner - Brush Life Level         |            |
-| brush-left-time      | Number               | Brush Cleaner - Brush Left Time          |            |
-| brush-life-level1    | Number               | Brush Cleaner - Brush Life Level         |            |
-| brush-left-time1     | Number               | Brush Cleaner - Brush Left Time          |            |
+| volume               | Number:Dimensionless | Alarm - Volume                           |            |
+| filter_life_level    | Number:Dimensionless | Filter - Filter Life Level               |            |
+| filter-left-time     | Number:Time          | Filter - Filter Left Time                |            |
+| brush-life-level     | Number:Dimensionless | Brush Cleaner - Brush Life Level         |            |
+| brush-left-time      | Number:Time          | Brush Cleaner - Brush Left Time          |            |
+| brush-life-level1    | Number:Dimensionless | Brush Cleaner - Brush Life Level         |            |
+| brush-left-time1     | Number:Time          | Brush Cleaner - Brush Left Time          |            |
+| direction_key        | Number               | Remote Control - Direction Key           | Value mapping `["0"="direction 0","1"="direction 1","2"="direction 2","3"="direction 3","4"="direction 4"]` |
 | clean-area           | Number:Area          | Clean Record - Clean Area                |            |
-| clean-time           | Number:Time          | Clean Record - Clean Time                |            |
-| total-clean-area     | Number               | Clean Record - Total Clean Area          |            |
+| clean_time           | Number               | Clean Record - Clean Time                |            |
+| total-clean-area     | Number:Area          | Clean Record - Total Clean Area          |            |
 | total-clean-time     | Number               | Clean Record - Total Clean Time          |            |
 | total-clean-count    | Number               | Clean Record - Total Clean Count         |            |
 | language             | Number               | Language - Language                      | Value mapping `["0"="English","1"="简体中文","2"="Español","3"="Русский","4"="Italiano","5"="Français","6"="Deutsch","7"="한국어","8"="Polski"]` |
@@ -1528,7 +2055,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | switchscene          | Switch               | Switch Scene                             |            |
 | delayoff             | Switch               | Delay Off                                |            |
 
-### Philips ZhiRui E14 candle lamp Frosted version (<a name="philips-light-candle">philips.light.candle</a>) Channels
+### Philips ZhiRui E14 Candle Lamp Frosted version (<a name="philips-light-candle">philips.light.candle</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1539,7 +2066,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | delayoff             | Switch               | Delay Off                                |            |
 | toggle               | Switch               | Toggle                                   |            |
 
-### Philips ZhiRui E14 candle lamp crystal version (<a name="philips-light-candle2">philips.light.candle2</a>) Channels
+### Philips ZhiRui E14 Candle Lamp Crystal version (<a name="philips-light-candle2">philips.light.candle2</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1576,7 +2103,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | switch_en            | Switch               | Switch Enabled                           |            |
 | delayoff             | Switch               | Delay Off                                |            |
 
-### Philips connected ceiling (<a name="philips-light-ceiling">philips.light.ceiling</a>) Channels
+### Philips Connected Ceiling (<a name="philips-light-ceiling">philips.light.ceiling</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1600,7 +2127,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | switch_en            | Switch               | Switch Enabled                           |            |
 | delayoff             | Switch               | Delay Off                                |            |
 
-### ZhiRui dimmable downlight (<a name="philips-light-dlight">philips.light.dlight</a>) Channels
+### ZhiRui Dimmable Downlight (<a name="philips-light-dlight">philips.light.dlight</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1614,8 +2141,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
-### Philips ZhiRui downlight (<a name="philips-light-downlight">philips.light.downlight</a>) Channels
+### Philips ZhiRui Downlight (<a name="philips-light-downlight">philips.light.downlight</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1639,7 +2167,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | switchscene          | Switch               | Switch Scene                             |            |
 | delayoff             | Switch               | Delay Off                                |            |
 
-### Philips ZhiYi Ceiling lamp FL 40W (<a name="philips-light-lnblight1">philips.light.lnblight1</a>) Channels
+### Philips ZhiYi Ceiling Lamp FL 40W (<a name="philips-light-lnblight1">philips.light.lnblight1</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1655,7 +2183,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | delayoff             | Switch               | Delay Off                                |            |
 | mb                   | Switch               | MiBand                                   |            |
 
-### Philips ZhiYi Ceiling lamp FL 28W (<a name="philips-light-lnblight2">philips.light.lnblight2</a>) Channels
+### Philips ZhiYi Ceiling Lamp FL 28W (<a name="philips-light-lnblight2">philips.light.lnblight2</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1671,7 +2199,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | delayoff             | Switch               | Delay Off                                |            |
 | mb                   | Switch               | MiBand                                   |            |
 
-### Philips ZhiYi Ceiling lamp FL 80W (<a name="philips-light-lnlrlight">philips.light.lnlrlight</a>) Channels
+### Philips ZhiYi Ceiling Lamp FL 80W (<a name="philips-light-lnlrlight">philips.light.lnlrlight</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1717,6 +2245,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
 ### Zhirui Ceiling Lamp Nordic 40W (<a name="philips-light-mceilm">philips.light.mceilm</a>) Channels
 
@@ -1732,6 +2261,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
 ### Zhirui Ceiling Lamp Nordic 28W (<a name="philips-light-mceils">philips.light.mceils</a>) Channels
 
@@ -1747,6 +2277,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
 ### Philips Smart Lamp (<a name="philips-light-mono1">philips.light.mono1</a>) Channels
 
@@ -1756,7 +2287,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | scene                | Number               | Scene                                    |            |
 
-### Philips ZhiRui bedside lamp (<a name="philips-light-moonlight">philips.light.moonlight</a>) Channels
+### Philips ZhiRui Bedside Lamp (<a name="philips-light-moonlight">philips.light.moonlight</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1783,8 +2314,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
-###  Zhirui Ceiling Lamp Black 40W (<a name="philips-light-obceim">philips.light.obceim</a>) Channels
+### Zhirui Ceiling Lamp Black 40W (<a name="philips-light-obceim">philips.light.obceim</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1798,6 +2330,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
 ### Zhirui Ceiling Lamp Black 28W (<a name="philips-light-obceis">philips.light.obceis</a>) Channels
 
@@ -1813,6 +2346,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
 ### Mijia Philips Study Desk Lamp (<a name="philips-light-rwread">philips.light.rwread</a>) Channels
 
@@ -1838,6 +2372,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
 ### Zhirui Ceiling Lamp Starry 40W (<a name="philips-light-sceilm">philips.light.sceilm</a>) Channels
 
@@ -1853,6 +2388,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
 ### Zhirui Ceiling Lamp Starry 28W (<a name="philips-light-sceils">philips.light.sceils</a>) Channels
 
@@ -1868,8 +2404,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
-### Philips EyeCare connected desk lamp gen2. (<a name="philips-light-sread1">philips.light.sread1</a>) Channels
+### Philips EyeCare Connected Desk Lamp gen2. (<a name="philips-light-sread1">philips.light.sread1</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1893,7 +2430,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | eyecare              | Switch               | Eyecare                                  |            |
 | bl                   | Switch               | Night Light                              |            |
 
-### Philips connected lights (<a name="philips-light-virtual">philips.light.virtual</a>) Channels
+### Philips Connected Lights (<a name="philips-light-virtual">philips.light.virtual</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1919,6 +2456,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
 ### Zhirui Ceiling Lamp Gorgeous 40W (<a name="philips-light-xzceim">philips.light.xzceim</a>) Channels
 
@@ -1934,6 +2472,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
 ### Zhirui Ceiling Lamp Gorgeous 28W (<a name="philips-light-xzceis">philips.light.xzceis</a>) Channels
 
@@ -1949,8 +2488,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | autoCct              | String               | Auto CCT                                 |            |
 | dimmingPeriod        | Number               | Dimming Period                           |            |
 | MibandStatus         | String               | Mi Band Status                           |            |
+| actions              | String               | Actions                                  | Value mapping `["light-brightness-down"="Light Brightness Down","light-brightness-up"="Light Brightness Up","light-toggle"="Light Toggle"]` |
 
-### Philips ZhiYi ceiling lamp (<a name="philips-light-zyceiling">philips.light.zyceiling</a>) Channels
+### Philips ZhiYi Ceiling lamp (<a name="philips-light-zyceiling">philips.light.zyceiling</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1961,7 +2501,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | switchscene          | Switch               | Switch Scene                             |            |
 | toggle               | Switch               | Toggle                                   |            |
 
-### Philips ZhiYi desk lamp (<a name="philips-light-zysread">philips.light.zysread</a>) Channels
+### Philips ZhiYi Desk Lamp (<a name="philips-light-zysread">philips.light.zysread</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1973,7 +2513,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | switchscene          | Switch               | Switch Scene                             |            |
 | delayoff             | Switch               | Delay Off                                |            |
 
-### Philips ZhiYi strip (<a name="philips-light-zystrip">philips.light.zystrip</a>) Channels
+### Philips ZhiYi Strip (<a name="philips-light-zystrip">philips.light.zystrip</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -1990,14 +2530,68 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
 | power                | Switch               | Power                                    |            |
-| powerUsage           | Number               | Power Consumption                        |            |
+| mode                 | String               | Mode                                     | Value mapping `["normal"="Normal","green"="Green"]` |
+| powerUsage           | Number:Power         | Power Consumption                        |            |
+| voltage              | Number:ElectricPotential | Voltage                                  |            |
 | led                  | Switch               | wifi LED                                 |            |
-| power_price          | Number               | power_price                              |            |
-| current              | Number               | Current                                  |            |
+| power_price          | Number               | Power Price                              |            |
+| power_factor         | Number               | Power Factor                             |            |
+| current              | Number:ElectricCurrent | Current                                  |            |
+| elec_leakage         | Number:ElectricCurrent | Electic Leakage                          |            |
 | temperature          | Number:Temperature   | Temperature                              |            |
-| lp_autooff           | Number               | Low Power Auto Off                       |            |
-| lp_autooff_delay     | Number               | Low Power Limit Time                     |            |
-| lp_threshold         | Number               | Low Power Threshold                      |            |
+
+### ROIDMI EVE vacuum (<a name="roidmi-vacuum-v60">roidmi.vacuum.v60</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| actions              | String               | Actions                                  | Value mapping `["vacuum-start-sweep"="Vacuum Start Sweep","vacuum-stop-sweeping"="Vacuum Stop Sweeping","vacuum-start-room-sweep"="Vacuum Start Room Sweep","battery-start-charge"="Battery Start Charge","filter-reset-filter-life"="Filter Reset Filter Life","brush-cleaner-reset-brush-life"="Brush Cleaner Reset Brush Life","brush-cleaner-reset-brush-life"="Brush Cleaner Reset Brush Life","brush-cleaner-reset-brush-life"="Brush Cleaner Reset Brush Life","custom-find-robot"="Custom Find Robot","custom-stop-find-charge"="Custom Stop Find Charge","custom-continue-sweep"="Custom Continue Sweep","custom-start-dust"="Custom Start Dust","custom-pause"="Custom Pause","custom-pause-find-charge"="Custom Pause Find Charge","custom-continue-find-charge"="Custom Continue Find Charge","custom-update-audio"="Custom Update Audio","custom-set-voice"="Custom Set Voice","map-request-path"="Map Request Path","map-change-area-name"="Map Change Area Name","map-set-auto-area"="Map Set Auto Area","map-local-map"="Map Local Map","map-area-custom"="Map Area Custom","map-area-order"="Map Area Order","sweep-start-sweep"="Sweep Start Sweep"]` |
+| status               | Number               | Robot Cleaner - Status                   | Value mapping `["1"="Dormant","2"="Idle","3"="Paused","4"="Sweeping","5"="Go Charging","6"="Charging","7"="Error","8"="Rfctrl","9"="Fullcharge","10"="Shutdown","11"="Findchargerpause"]` |
+| fault                | Number               | Robot Cleaner - Device Fault             | Value mapping `["0"="No Faults","1"="Low Battery Find Charger","2"="Low Battery And Poweroff","3"="Wheel Trap","4"="Collision Error","5"="Tile Do Task","6"="Lidar Point Error","7"="Front Wall Error","8"="Psd Dirty","9"="Middle Brush Fatal","10"="Sid Brush","11"="Fan Speed Error","12"="Lidar Cover","13"="Garbage Box Full","14"="Garbage Box Out","15"="Garbage Box Full Out","16"="Physical Trapped","17"="Pick Up Do Task","18"="No Water Box Do Task","19"="Water Box Empty","20"="Clean Cannot Arrive","21"="Start Form Forbid","22"="Drop","23"="Kit Water Pump","24"="Find Charger Failed","25"="Low Power Clean"]` |
+| mode                 | Number               | Robot Cleaner - Mode                     | Value mapping `["1"="Silent","2"="Basic","3"="Strong","4"="Full Speed","0"="Sweep"]` |
+| sweep_type           | Number               | Robot Cleaner - Sweep Type               | Value mapping `["0"="Sweep","1"="Mop","2"="Mop And Sweep"]` |
+| on                   | Number               | Robot Cleaner - Switch Status            | Value mapping `["1"="Open"]` |
+| battery_level        | Number:Dimensionless | Battery - Battery Level                  |            |
+| charging_state       | Number               | Battery - Charging State                 | Value mapping `["1"="Charging","2"="Not charging","3"="Not chargeable"]` |
+| volume               | Number:Dimensionless | Speaker - Volume                         |            |
+| mute                 | Switch               | Speaker - Mute                           |            |
+| filter_life_level    | Number:Dimensionless | Filter - Filter Life Level               |            |
+| filter_left_time     | Number:Time          | Filter - Filter Left Time                |            |
+| brush_left_time      | Number:Time          | Brush Cleaner - Brush Left Time          |            |
+| brush_life_level     | Number:Dimensionless | Brush Cleaner - Brush Life Level         |            |
+| brush_left_time1     | Number:Time          | Brush Cleaner - Brush Left Time          |            |
+| brush_life_level1    | Number:Dimensionless | Brush Cleaner - Brush Life Level         |            |
+| brush_left_time2     | Number:Time          | Brush Cleaner - Brush Left Time          |            |
+| brush_life_level2    | Number:Dimensionless | Brush Cleaner - Brush Life Level         |            |
+| mop                  | Switch               | Custom - Mop                             |            |
+| work_station_freq    | Number               | Custom - Work Station Freq               |            |
+| timing               | String               | Custom - Timing                          |            |
+| clean_area           | Number               | Custom - Clean Area                      |            |
+| uid                  | String               | Custom - Uid                             |            |
+| auto_boost           | Switch               | Custom - Auto Boost                      |            |
+| forbid_mode          | String               | Custom - Forbid Mode                     |            |
+| water_level          | Number               | Custom - Water Level                     | Value mapping `["1"="First","2"="Second","3"="Three","4"="Fourth","0"="Mop"]` |
+| total_clean_time     | Number:Time          | Custom - Total Clean Time                |            |
+| total_clean_areas    | Number               | Custom - Total Clean Areas               |            |
+| clean_counts         | Number               | Custom - Clean Counts                    |            |
+| clean_time           | Number:Time          | Custom - Clean Time                      |            |
+| double_clean         | Switch               | Custom - Double Clean                    |            |
+| edge_sweep           | Switch               | Custom - Edge Sweep                      |            |
+| led_switch           | Switch               | Custom - Led Switch                      |            |
+| lidar_collision      | Switch               | Custom - Lidar Collision                 |            |
+| station_key          | Switch               | Custom - Station Key                     |            |
+| station_led          | Switch               | Custom - Station Led                     |            |
+| current_audio        | String               | Custom - Current Audio                   |            |
+| progress             | String               | Custom - Progress                        |            |
+| station_type         | Number               | Custom - Station Type                    |            |
+| voice_conf           | String               | Custom - Voice Conf                      |            |
+| clean_path           | String               | Map - Clean Path                         |            |
+| restricted_zone      | String               | Map - Restricted Zone                    |            |
+| auto_area            | String               | Map - Auto Area                          |            |
+| map_memory           | Switch               | Map - Map Memory                         |            |
+| map_name             | String               | Map - Map Name                           |            |
+| use_auto_area        | Switch               | Map - Use Auto Area                      |            |
+| path_type            | Number               | Map - Path Type                          | Value mapping `["0"="Normal","1"="Y-Mopping","2"="Repeat-Mopping"]` |
+| sweep_mode           | Number               | Sweep - Sweep Mode                       | Value mapping `["1"="Total","2"="Area","3"="Curpoint","4"="Point","7"="Smart","8"="AmartArea","9"="DepthTotal","10"="AlongWall","0"="Idle"]` |
 
 ### PTX OneKey Switch (WIFI) (<a name="090615-switch-xswitch01">090615.switch.xswitch01</a>) Channels
 
@@ -2036,7 +2630,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | expresso             | Number               | Brew Americano                           | Value is the amount of coffee in ml. parameters in json are cupAmount: [set by OH], coffee: 40,water: 80, temp: 90 |
 | boil                 | Number               | Boil water                               | Value is the amount of water (ml) to heat. 2nd parameter in the json db is the water temperature |
 
-### Xiaomi Scishare smart capsule coffee machine (<a name="scishare-coffee-s1301">scishare.coffee.s1301</a>) Channels
+### Xiaomi Scishare Smart Capsule Coffee Machine (<a name="scishare-coffee-s1301">scishare.coffee.s1301</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -2050,60 +2644,63 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
-| vacuumaction         | Number               | Vacuum Action                            |            |
-| state                | Number               | State                                    |            |
-| mode                 | Number               | Mode                                     |            |
-| err_state            | Number               | Error                                    |            |
+| vacuumaction         | Number               | Vacuum Action                            | Value mapping `["1"="Start","0"="Stop","2"="Pause","3"="Dock"]` |
+| state                | Number               | State                                    | Value mapping `["0"="Idle Undocked","1"="Idle","2"="Paused","3"="Sweeping","4"="Go Charging","5"="Charging","6"="Sweeping and Mopping","7"="Mopping"]` |
+| mode                 | Number               | Clean Mode                               | Value mapping `["0"="Everywhere","1"="Edges","2"="Surface","3"="Fixed Location"]` |
+| err_state            | Number               | Error                                    | Value mapping `["0"="Sleeping and not charging","500"="Radar timed out","501"="Wheels stuck","502"="Low battery","503"="Dust bin missing","508"="Uneven ground","509"="Cliff sensor erro","510"="Collision sensor error","511"="Could not return to dock","512"="Could not return to dock","513"="Could not navigate","514"="Vacuum stuck","515"="Charging erro","516"="Mop temperature error","521"="Water tank is not installed","522"="Mop is not installed","525"="Insufficient water in water tank","527"="Remove mop","528"="Dust bin missing","529"="Mop and water tank missing","530"="Mop and water tank missin","531"="Water tank is not installed","2101"="Unsufficient battery, continuing cleaning after recharge","2103"="Charging","2104"="Fully charged"]` |
 | battery_life         | Number               | Battery                                  |            |
-| box_type             | Number               | Box type                                 |            |
+| box_type             | Number               | Box type                                 | Value mapping `["0"="No Bin","1"="Sweep","2"="Mop","3"="Sweep and Mop"]` |
 | mop_type             | Number               | mop_type                                 |            |
+| mop_route            | Number               | Mop Route                                | Value mapping `["0"="S-Pattern","1"="Y-Pattern"]` |
 | s_time               | Number               | Clean time                               |            |
 | s_area               | Number               | Clean Area                               |            |
-| suction_grade        | Number               | suction_grade                            |            |
-| water_grade          | Number               | water_grade                              |            |
+| suction_grade        | Number               | suction_grade                            | Value mapping `["0"="Silent","1"="Basic","2"="Medium","3"="Strong"]` |
+| water_grade          | Number               | water_grade                              | Value mapping `["11"="Low","12"="Medium","13"="High"]` |
 | remember_map         | Number               | remember_map                             |            |
 | has_map              | Number               | has_map                                  |            |
-| is_mop               | Number               | is_mop                                   |            |
+| is_mop               | Number               | is_mop                                   | Value mapping `["0"="Vacuum","1"="Vacuum And Mop","2"="Mop","3"="CleanZone","4"="CleanSpot"]` |
 | has_newmap           | Number               | has_newmap                               |            |
 
 ### Mi Robot Vacuum-Mop P (<a name="viomi-vacuum-v7">viomi.vacuum.v7</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
-| vacuumaction         | Number               | Vacuum Action                            |            |
-| state                | Number               | State                                    |            |
-| mode                 | Number               | Mode                                     |            |
-| err_state            | Number               | Error                                    |            |
+| vacuumaction         | Number               | Vacuum Action                            | Value mapping `["1"="Start","0"="Stop","2"="Pause","3"="Dock"]` |
+| state                | Number               | State                                    | Value mapping `["0"="Idle Undocked","1"="Idle","2"="Paused","3"="Sweeping","4"="Go Charging","5"="Charging","6"="Sweeping and Mopping","7"="Mopping"]` |
+| mode                 | Number               | Clean Mode                               | Value mapping `["0"="Everywhere","1"="Edges","2"="Surface","3"="Fixed Location"]` |
+| err_state            | Number               | Error                                    | Value mapping `["0"="Sleeping and not charging","500"="Radar timed out","501"="Wheels stuck","502"="Low battery","503"="Dust bin missing","508"="Uneven ground","509"="Cliff sensor erro","510"="Collision sensor error","511"="Could not return to dock","512"="Could not return to dock","513"="Could not navigate","514"="Vacuum stuck","515"="Charging erro","516"="Mop temperature error","521"="Water tank is not installed","522"="Mop is not installed","525"="Insufficient water in water tank","527"="Remove mop","528"="Dust bin missing","529"="Mop and water tank missing","530"="Mop and water tank missin","531"="Water tank is not installed","2101"="Unsufficient battery, continuing cleaning after recharge","2103"="Charging","2104"="Fully charged"]` |
 | battery_life         | Number               | Battery                                  |            |
-| box_type             | Number               | Box type                                 |            |
+| box_type             | Number               | Box type                                 | Value mapping `["0"="No Bin","1"="Sweep","2"="Mop","3"="Sweep and Mop"]` |
 | mop_type             | Number               | mop_type                                 |            |
+| mop_route            | Number               | Mop Route                                | Value mapping `["0"="S-Pattern","1"="Y-Pattern"]` |
 | s_time               | Number               | Clean time                               |            |
 | s_area               | Number               | Clean Area                               |            |
-| suction_grade        | Number               | suction_grade                            |            |
-| water_grade          | Number               | water_grade                              |            |
+| suction_grade        | Number               | suction_grade                            | Value mapping `["0"="Silent","1"="Basic","2"="Medium","3"="Strong"]` |
+| water_grade          | Number               | water_grade                              | Value mapping `["11"="Low","12"="Medium","13"="High"]` |
 | remember_map         | Number               | remember_map                             |            |
 | has_map              | Number               | has_map                                  |            |
-| is_mop               | Number               | is_mop                                   |            |
+| is_mop               | Number               | is_mop                                   | Value mapping `["0"="Vacuum","1"="Vacuum And Mop","2"="Mop","3"="CleanZone","4"="CleanSpot"]` |
 | has_newmap           | Number               | has_newmap                               |            |
 
 ### Mi Robot Vacuum-Mop P (<a name="viomi-vacuum-v8">viomi.vacuum.v8</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
-| vacuumaction         | Number               | Vacuum Action                            |            |
-| state                | Number               | State                                    |            |
-| mode                 | Number               | Mode                                     |            |
-| err_state            | Number               | Error                                    |            |
+| vacuumaction         | Number               | Vacuum Action                            | Value mapping `["1"="Start","0"="Stop","2"="Pause","3"="Dock"]` |
+| state                | Number               | State                                    | Value mapping `["0"="Idle Undocked","1"="Idle","2"="Paused","3"="Sweeping","4"="Go Charging","5"="Charging","6"="Sweeping and Mopping","7"="Mopping"]` |
+| mode                 | Number               | Clean Mode                               | Value mapping `["0"="Everywhere","1"="Edges","2"="Surface","3"="Fixed Location"]` |
+| err_state            | Number               | Error                                    | Value mapping `["0"="Sleeping and not charging","500"="Radar timed out","501"="Wheels stuck","502"="Low battery","503"="Dust bin missing","508"="Uneven ground","509"="Cliff sensor erro","510"="Collision sensor error","511"="Could not return to dock","512"="Could not return to dock","513"="Could not navigate","514"="Vacuum stuck","515"="Charging erro","516"="Mop temperature error","521"="Water tank is not installed","522"="Mop is not installed","525"="Insufficient water in water tank","527"="Remove mop","528"="Dust bin missing","529"="Mop and water tank missing","530"="Mop and water tank missin","531"="Water tank is not installed","2101"="Unsufficient battery, continuing cleaning after recharge","2103"="Charging","2104"="Fully charged"]` |
 | battery_life         | Number               | Battery                                  |            |
-| box_type             | Number               | Box type                                 |            |
+| box_type             | Number               | Box type                                 | Value mapping `["0"="No Bin","1"="Sweep","2"="Mop","3"="Sweep and Mop"]` |
 | mop_type             | Number               | mop_type                                 |            |
+| mop_route            | Number               | Mop Route                                | Value mapping `["0"="S-Pattern","1"="Y-Pattern"]` |
 | s_time               | Number               | Clean time                               |            |
 | s_area               | Number               | Clean Area                               |            |
-| suction_grade        | Number               | suction_grade                            |            |
-| water_grade          | Number               | water_grade                              |            |
+| suction_grade        | Number               | suction_grade                            | Value mapping `["0"="Silent","1"="Basic","2"="Medium","3"="Strong"]` |
+| water_grade          | Number               | water_grade                              | Value mapping `["11"="Low","12"="Medium","13"="High"]` |
 | remember_map         | Number               | remember_map                             |            |
 | has_map              | Number               | has_map                                  |            |
-| is_mop               | Number               | is_mop                                   |            |
+| is_mop               | Number               | is_mop                                   | Value mapping `["0"="Vacuum","1"="Vacuum And Mop","2"="Mop","3"="CleanZone","4"="CleanSpot"]` |
 | has_newmap           | Number               | has_newmap                               |            |
 
 ### Viomi S9 (<a name="viomi-vacuum-v18">viomi.vacuum.v18</a>) Channels
@@ -2171,7 +2768,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | download-status      | Number               | Voice - Download Status                  | Value mapping `["0"="Free","1"="Downloading"]` |
 | download-progress    | Number:Dimensionless | Voice - Download Progress                |            |
 
-### VIOMI Internet electric water heater 1A (60L) (<a name="viomi-waterheater-e1">viomi.waterheater.e1</a>) Channels
+### VIOMI Internet Electric Water Heater 1A (60L) (<a name="viomi-waterheater-e1">viomi.waterheater.e1</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -2778,7 +3375,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | fan_temp             | Number:Temperature   | Fan Temperature                          |            |
 | status_led           | Number               | Night Light                              |            |
 
-### Uclean smart toilet pure (<a name="xjx-toilet-pure">xjx.toilet.pure</a>) Channels
+### Uclean Smart Toilet pure (<a name="xjx-toilet-pure">xjx.toilet.pure</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -2788,7 +3385,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | fan_temp             | Number:Temperature   | Fan Temperature                          |            |
 | status_led           | Number               | Night Light                              |            |
 
-### Uclean smart toilet relax (<a name="xjx-toilet-relax">xjx.toilet.relax</a>) Channels
+### Uclean Smart Toilet relax (<a name="xjx-toilet-relax">xjx.toilet.relax</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -2838,8 +3435,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Mi Bedside Lamp 2 (<a name="yeelink-light-bslamp2">yeelink.light.bslamp2</a>) Channels
@@ -2850,8 +3448,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Bedside Lamp II (<a name="yeelink-light-bslamp3">yeelink.light.bslamp3</a>) Channels
@@ -2862,8 +3461,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Ceiling Light (<a name="yeelink-light-ceiling1">yeelink.light.ceiling1</a>) Channels
@@ -2874,7 +3474,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -2887,7 +3487,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -2900,7 +3500,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -2914,7 +3514,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | ambientBrightness    | Dimmer               | Ambient Brightness                       |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | ambientPower         | Switch               | Ambient Power                            |            |
 | ambientColor         | Color                | Ambient Color                            |            |
@@ -2931,7 +3531,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -2944,7 +3544,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -2957,7 +3557,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -2970,7 +3570,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -2983,7 +3583,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -2996,7 +3596,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3010,7 +3610,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | ambientBrightness    | Dimmer               | Ambient Brightness                       |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | ambientPower         | Switch               | Ambient Power                            |            |
 | ambientColor         | Color                | Ambient Color                            |            |
@@ -3027,7 +3627,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3040,12 +3640,12 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
 
-### Yeelight stylized Ceiling Light  Pro (<a name="yeelink-light-ceiling12">yeelink.light.ceiling12</a>) Channels
+### Yeelight Stylized Ceiling Light  Pro (<a name="yeelink-light-ceiling12">yeelink.light.ceiling12</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
 |----------------------|----------------------|------------------------------------------|------------|
@@ -3053,7 +3653,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3066,7 +3666,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3079,7 +3679,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3092,7 +3692,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3105,7 +3705,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3118,7 +3718,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3131,7 +3731,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3144,7 +3744,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3157,7 +3757,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3170,7 +3770,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3183,7 +3783,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3196,7 +3796,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3209,7 +3809,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3222,7 +3822,20 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| name                 | String               | Name                                     |            |
+| customScene          | String               | Set Scene                                |            |
+| nightlightBrightness | Number               | Nightlight Brightness                    |            |
+
+### Yeelight Jade Smart LED Ceiling Light C2001 (<a name="yeelink-light-ceil26">yeelink.light.ceil26</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| delayoff             | Number:Time          | Shutdown Timer                           |            |
+| colorTemperature     | Number               | Color Temperature                        |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3235,8 +3848,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight LED Bulb (Color) (<a name="yeelink-light-color2">yeelink.light.color2</a>) Channels
@@ -3247,8 +3861,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Mi LED Smart Bulb (White and Color) (<a name="yeelink-light-color3">yeelink.light.color3</a>) Channels
@@ -3259,8 +3874,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight LED Bulb 1S（Color） (<a name="yeelink-light-color4">yeelink.light.color4</a>) Channels
@@ -3271,8 +3887,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Mi Smart LED Bulb Essential (White and Color) (<a name="yeelink-light-color5">yeelink.light.color5</a>) Channels
@@ -3283,8 +3900,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Smart LED Bulb 1SE (color) (<a name="yeelink-light-colora">yeelink.light.colora</a>) Channels
@@ -3295,8 +3913,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight LED Bulb (Tunable) (<a name="yeelink-light-ct2">yeelink.light.ct2</a>) Channels
@@ -3307,7 +3926,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Mi LED Desk Lamp (<a name="yeelink-light-lamp1">yeelink.light.lamp1</a>) Channels
@@ -3318,7 +3937,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Mi Smart LED Desk Lamp Pro (<a name="yeelink-light-lamp2">yeelink.light.lamp2</a>) Channels
@@ -3329,7 +3948,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight LED Lamp (<a name="yeelink-light-lamp3">yeelink.light.lamp3</a>) Channels
@@ -3340,7 +3959,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Mi LED Desk Lamp 1S (<a name="yeelink-light-lamp4">yeelink.light.lamp4</a>) Channels
@@ -3351,7 +3970,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Smart Desk Lamp Prime (<a name="yeelink-light-lamp5">yeelink.light.lamp5</a>) Channels
@@ -3362,7 +3981,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight (<a name="yeelink-light-lamp6">yeelink.light.lamp6</a>) Channels
@@ -3373,7 +3992,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight LED Light Sensor Desk Lamp V1 (<a name="yeelink-light-lamp7">yeelink.light.lamp7</a>) Channels
@@ -3384,7 +4003,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight (<a name="yeelink-light-lamp8">yeelink.light.lamp8</a>) Channels
@@ -3395,7 +4014,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Star LED Table Lamp (<a name="yeelink-light-lamp9">yeelink.light.lamp9</a>) Channels
@@ -3406,7 +4025,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Star Floor Lamp (<a name="yeelink-light-lamp10">yeelink.light.lamp10</a>) Channels
@@ -3417,7 +4036,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Screen Light Bar (<a name="yeelink-light-lamp15">yeelink.light.lamp15</a>) Channels
@@ -3428,7 +4047,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number:Temperature   | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
 | ambientBrightness    | Number               | Ambient Brightness                       |            |
 | ambientPower         | Switch               | Ambient Power                            |            |
@@ -3444,7 +4063,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight White Bulb v2 (<a name="yeelink-light-mono2">yeelink.light.mono2</a>) Channels
@@ -3455,7 +4074,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight LED Bulb 1S（Dimmable） (<a name="yeelink-light-mono4">yeelink.light.mono4</a>) Channels
@@ -3466,7 +4085,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight LED Filament Bulb (<a name="yeelink-light-mono5">yeelink.light.mono5</a>) Channels
@@ -3477,7 +4096,40 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| name                 | String               | Name                                     |            |
+
+### Mi Smart LED Bulb (<a name="yeelink-light-mono6">yeelink.light.mono6</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| delayoff             | Number:Time          | Shutdown Timer                           |            |
+| colorTemperature     | Number               | Color Temperature                        |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| name                 | String               | Name                                     |            |
+
+### Yeelight LED smart bulb W3(dimmable) (<a name="yeelink-light-monoa">yeelink.light.monoa</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| delayoff             | Number:Time          | Shutdown Timer                           |            |
+| colorTemperature     | Number               | Color Temperature                        |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| name                 | String               | Name                                     |            |
+
+### Yeelight GU10 Smart Bulb W1(dimmable) (<a name="yeelink-light-monob">yeelink.light.monob</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| brightness           | Dimmer               | Brightness                               |            |
+| delayoff             | Number:Time          | Shutdown Timer                           |            |
+| colorTemperature     | Number               | Color Temperature                        |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Whiteglow Panel Light (<a name="yeelink-light-panel1">yeelink.light.panel1</a>) Channels
@@ -3488,7 +4140,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3501,8 +4153,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Lightstrip Plus (<a name="yeelink-light-strip2">yeelink.light.strip2</a>) Channels
@@ -3513,8 +4166,9 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | rgbColor             | Color                | RGB Color                                |            |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorflow            | Switch               | Color Flow                               |            |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Willow LED Lightstrip (<a name="yeelink-light-strip4">yeelink.light.strip4</a>) Channels
@@ -3525,7 +4179,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Light Group (Mi & Yeelight) (<a name="yeelink-light-virtual">yeelink.light.virtual</a>) Channels
@@ -3536,7 +4190,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 
 ### Yeelight Smart Dual Control Module (<a name="yeelink-switch-sw1">yeelink.switch.sw1</a>) Channels
@@ -3561,7 +4215,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3574,7 +4228,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -3587,7 +4241,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | brightness           | Dimmer               | Brightness                               |            |
 | delayoff             | Number:Time          | Shutdown Timer                           |            |
 | colorTemperature     | Number               | Color Temperature                        |            |
-| colorMode            | Number               | Color Mode                               | Value mapping `["0"="Default","1"="CT mode","2"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
+| colorMode            | Number               | Color Mode                               | Note, currently only supporting switching to RGB or CT mode. Value mapping `["0"="Default","2"="CT mode","1"="RGB mode","3"="HSV mode","4"="Color Flow mode","5"="Night Light mode"]` |
 | name                 | String               | Name                                     |            |
 | customScene          | String               | Set Scene                                |            |
 | nightlightBrightness | Number               | Nightlight Brightness                    |            |
@@ -4055,6 +4709,62 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | tds_out_avg          | Number               | Average TDS out                          |            |
 | lightMode            | Number               | Light Mode                               | Value mapping `["0"="Simple Mode","1"="Special Mode"]` |
 
+### Smartmi Ventilation System (<a name="zhimi-airfresh-va2">zhimi.airfresh.va2</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| heater               | Switch               | Heater                                   |            |
+| mode                 | String               | Mode                                     | Value mapping `["interval"="Interval","silent"="Night","low"="1","middle"="2","strong"="3","auto"="Auto"]` |
+| humidity             | Number:Dimensionless | Humidity                                 |            |
+| co2                  | Number:Dimensionless | CO2                                      |            |
+| childLock            | Switch               | Child Lock                               |            |
+| buzzer               | Switch               | Buzzer                                   |            |
+| aqi                  | Number               | Air Quality Index                        |            |
+| averageaqi           | Number               | Average Air Quality Index                |            |
+| filterhours          | Number:Time          | Filter Hours used                        |            |
+| usedhours            | Number:Time          | Run Time                                 |            |
+| motorspeed           | Number               | Motor Speed                              |            |
+| led_level            | Number               | Led - Brightness                         | Value mapping `["0"="High","1"="Low","2"="Idle"]` |
+| temperature          | Number:Temperature   | Temperature                              |            |
+
+### Smartmi Fresh Air System (Heating) (<a name="zhimi-airfresh-va4">zhimi.airfresh.va4</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| power                | Switch               | Power                                    |            |
+| heater               | Switch               | Heater                                   |            |
+| mode                 | String               | Mode                                     | Value mapping `["interval"="Interval","silent"="Night","low"="1","middle"="2","strong"="3","auto"="Auto"]` |
+| humidity             | Number:Dimensionless | Humidity                                 |            |
+| co2                  | Number:Dimensionless | CO2                                      |            |
+| childLock            | Switch               | Child Lock                               |            |
+| buzzer               | Switch               | Buzzer                                   |            |
+| aqi                  | Number               | Air Quality Index                        |            |
+| averageaqi           | Number               | Average Air Quality Index                |            |
+| filterhours          | Number:Time          | Filter Hours used                        |            |
+| usedhours            | Number:Time          | Run Time                                 |            |
+| motorspeed           | Number               | Motor Speed                              |            |
+| led_level            | Number               | Led - Brightness                         | Value mapping `["0"="High","1"="Low","2"="Idle"]` |
+| temperature          | Number:Temperature   | Temperature                              |            |
+
+### Mi Fresh Air Ventilator C1-80 (<a name="zhimi-airfresh-ua1">zhimi.airfresh.ua1</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| actions              | String               | Actions                                  | Value mapping `["filter-reset-filter-life"="Filter Reset Filter Life"]` |
+| on                   | Switch               | Air Fresh - Switch Status                |            |
+| fault                | Number               | Device Fault                             | Value mapping `["0"="No Faults"]` |
+| fan_level            | Number               | Air Fresh - Fan Level                    | Value mapping `["1"="Level1","2"="Level2","3"="Level3"]` |
+| heater               | Switch               | Heater                                   |            |
+| filter_used_time     | Number:Time          | Filter - Filter Used Time                |            |
+| filter_life_level    | Number:Dimensionless | Filter - Filter Life Level               |            |
+| physical_controls_locked | Switch               | Physical Control Locked - Physical Control Locked |            |
+| alarm                | Switch               | Alarm - Alarm                            |            |
+| brightness           | Dimmer               | Indicator Light - Brightness             |            |
+| motor_a_speed_rpm    | Number               | Custom Service - Motor A Speed Rpm       |            |
+| motor_b_speed_rpm    | Number               | Custom Service - Motor B Speed Rpm       |            |
+| temperature          | Number:Temperature   | Custom Service - Temperature             |            |
+
 ### Mi PM2.5 Air Quality Monitor (<a name="zhimi-airmonitor-v1">zhimi.airmonitor.v1</a>) Channels
 
 | Channel              | Type                 | Description                              | Comment    |
@@ -4067,6 +4777,25 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | night_state          | Switch               | Night State                              |            |
 | night_begin          | Number               | Night Begin Time                         |            |
 | night_end            | Number               | Night End Time                           |            |
+
+### Mi Air Purifier 3C (<a name="zhimi-airp-mb4a">zhimi.airp.mb4a</a>) Channels
+
+| Channel              | Type                 | Description                              | Comment    |
+|----------------------|----------------------|------------------------------------------|------------|
+| actions              | String               | Actions                                  | Value mapping `["filter-reset-filter-life"="Filter Reset Filter Life"]` |
+| on                   | Switch               | Power                                    |            |
+| fault                | String               | Air Purifier - Device Fault              |            |
+| mode                 | Number               | Mode                                     | Value mapping `["0"="Auto","1"="Sleep","2"="Favorite"]` |
+| pm2_5_density        | Number               | Environment - PM2 5 Density              |            |
+| filter_life_level    | Number:Dimensionless | Filter - Filter Life Level               |            |
+| filter_used_time     | Number:Time          | Filter - Filter Used Time                |            |
+| alarm                | Switch               | Alarm - Alarm                            |            |
+| brightness           | Number               | Screen - Brightness                      |            |
+| physical_controls_locked | Switch               | Physical Control Locked - Physical Control Locked |            |
+| moto_speed_rpm       | Number               | Custom Service - Moto Speed Rpm          |            |
+| miio_lib_version     | String               | Custom Service - Miio Lib Version        |            |
+| favorite_speed       | Number               | Custom Service - Favorite Speed          |            |
+| aqi_updata_heartbeat | Number:Time          | Custom Service - Aqi Updata Heartbeat    |            |
 
 ### Mi Air Purifier 2 (mini) (<a name="zhimi-airpurifier-m1">zhimi.airpurifier.m1</a>) Channels
 
@@ -4282,7 +5011,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | hw-version           | Number               | Others - Hw Version                      |            |
 | iic-error-count      | Number               | Others - Iic Error Count                 |            |
 | manual-level         | Number               | Others - Manual Level                    | Value mapping `["1"="Level1","2"="Level2","3"="Level3"]` |
-| country-code         | Number               | Others - National Code                   | Value mapping `["91"="印度","44"="分销英文","852"="中国香港","886"="中国台湾","82"="韩国"]` |
+| country-code         | Number               | Others - National Code                   | Value mapping `["91"="India","44"="UK","852"="Hong Kong","886"="Taiwan","82"="Korea"]` |
 
 ### Mi Air Purifier 3C (<a name="zhimi-airpurifier-mb4">zhimi.airpurifier.mb4</a>) Channels
 
@@ -4565,7 +5294,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | buttom_door          | String               | Others - Buttom Door                     |            |
 | reboot_cause         | Number               | Others - Reboot_cause                    | Value mapping `["0"="REASON_HW_BOOT","1"="REASON_USER_REBOOT","2"="REASON_UPDATE","3"="REASON_WDT"]` |
 | manual_level         | Number               | Others - Manual Level                    | Value mapping `["1"="level1","2"="level2","3"="level3"]` |
-| powertime            | Number:duration      | Others - Powertime                       |            |
+| powertime            | Number:Time          | Others - Powertime                       |            |
 | country_code         | Number               | Others - Country Code                    | Value mapping `["91"="India","44"="UK","852"="Hong Kong","886"="Taiwan","82"="Korea"]` |
 
 ### Smartmi Air Purifier (<a name="zhimi-airpurifier-za1">zhimi.airpurifier.za1</a>) Channels
@@ -4612,16 +5341,16 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | power                | Switch               | Power                                    |            |
 | angleEnable          | Switch               | Rotation                                 |            |
 | usedhours            | Number:Time          | Run Time                                 |            |
-| angle                | Number               | Angle                                    |            |
-| poweroffTime         | Number               | Timer                                    |            |
+| angle                | Number:Angle         | Angle                                    | Value mapping `["30"="30","60"="60","90"="90","120"="120"]` |
+| poweroffTime         | Number:Time          | Power-Off Timer                          |            |
 | buzzer               | Switch               | Buzzer                                   |            |
-| led_b                | Number               | LED                                      |            |
+| led_b                | Number               | LED                                      | Value mapping `["0"="Bright","1"="Dimmed","2"="Off"]` |
 | child_lock           | Switch               | Child Lock                               |            |
-| speedLevel           | Number               | Speed Level                              |            |
+| speedLevel           | Dimmer               | Speed Level                              |            |
 | speed                | Number               | Speed                                    |            |
-| naturalLevel         | Number               | Natural Level                            |            |
+| naturalLevel         | Dimmer               | Natural Level                            |            |
 | acPower              | Switch               | AC Power                                 |            |
-| move                 | String               | Move Direction                           |            |
+| move                 | String               | Move Direction                           | Value mapping `[""="None","left"="Left","right"="Right"]` |
 
 ### Mi Smart Fan (<a name="zhimi-fan-v1">zhimi.fan.v1</a>) Channels
 
@@ -4630,20 +5359,20 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | power                | Switch               | Power                                    |            |
 | angleEnable          | Switch               | Rotation                                 |            |
 | usedhours            | Number:Time          | Run Time                                 |            |
-| angle                | Number               | Angle                                    |            |
-| poweroffTime         | Number               | Timer                                    |            |
+| angle                | Number:Angle         | Angle                                    | Value mapping `["30"="30","60"="60","90"="90","120"="120"]` |
+| poweroffTime         | Number:Time          | Power-Off Timer                          |            |
 | buzzer               | Switch               | Buzzer                                   |            |
-| led_b                | Number               | LED                                      |            |
+| led_b                | Number               | LED                                      | Value mapping `["0"="Bright","1"="Dimmed","2"="Off"]` |
 | child_lock           | Switch               | Child Lock                               |            |
-| speedLevel           | Number               | Speed Level                              |            |
+| speedLevel           | Dimmer               | Speed Level                              |            |
 | speed                | Number               | Speed                                    |            |
-| naturalLevel         | Number               | Natural Level                            |            |
+| naturalLevel         | Dimmer               | Natural Level                            |            |
 | temp_dec             | Number               | Temperature                              |            |
 | humidity             | Number:Dimensionless | Humidity                                 |            |
-| acPower              | String               | AC Power                                 |            |
+| acPower              | Switch               | AC Power                                 |            |
 | mode                 | String               | Battery Charge                           |            |
 | battery              | Number               | Battery                                  |            |
-| move                 | String               | Move Direction                           |            |
+| move                 | String               | Move Direction                           | Value mapping `[""="None","left"="Left","right"="Right"]` |
 
 ### Smartmi DC Pedestal Fan (<a name="zhimi-fan-v2">zhimi.fan.v2</a>) Channels
 
@@ -4652,20 +5381,20 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | power                | Switch               | Power                                    |            |
 | angleEnable          | Switch               | Rotation                                 |            |
 | usedhours            | Number:Time          | Run Time                                 |            |
-| angle                | Number               | Angle                                    |            |
-| poweroffTime         | Number               | Timer                                    |            |
+| angle                | Number:Angle         | Angle                                    | Value mapping `["30"="30","60"="60","90"="90","120"="120"]` |
+| poweroffTime         | Number:Time          | Power-Off Timer                          |            |
 | buzzer               | Switch               | Buzzer                                   |            |
-| led_b                | Number               | LED                                      |            |
+| led_b                | Number               | LED                                      | Value mapping `["0"="Bright","1"="Dimmed","2"="Off"]` |
 | child_lock           | Switch               | Child Lock                               |            |
-| speedLevel           | Number               | Speed Level                              |            |
+| speedLevel           | Dimmer               | Speed Level                              |            |
 | speed                | Number               | Speed                                    |            |
-| naturalLevel         | Number               | Natural Level                            |            |
+| naturalLevel         | Dimmer               | Natural Level                            |            |
 | temp_dec             | Number               | Temperature                              |            |
 | humidity             | Number:Dimensionless | Humidity                                 |            |
-| acPower              | String               | AC Power                                 |            |
+| acPower              | Switch               | AC Power                                 |            |
 | mode                 | String               | Battery Charge                           |            |
 | battery              | Number               | Battery                                  |            |
-| move                 | String               | Move Direction                           |            |
+| move                 | String               | Move Direction                           | Value mapping `[""="None","left"="Left","right"="Right"]` |
 
 ### Smartmi DC Pedestal Fan (<a name="zhimi-fan-v3">zhimi.fan.v3</a>) Channels
 
@@ -4674,20 +5403,20 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | power                | Switch               | Power                                    |            |
 | angleEnable          | Switch               | Rotation                                 |            |
 | usedhours            | Number:Time          | Run Time                                 |            |
-| angle                | Number               | Angle                                    |            |
-| poweroffTime         | Number               | Timer                                    |            |
+| angle                | Number:Angle         | Angle                                    | Value mapping `["30"="30","60"="60","90"="90","120"="120"]` |
+| poweroffTime         | Number:Time          | Power-Off Timer                          |            |
 | buzzer               | Switch               | Buzzer                                   |            |
-| led_b                | Number               | LED                                      |            |
+| led_b                | Number               | LED                                      | Value mapping `["0"="Bright","1"="Dimmed","2"="Off"]` |
 | child_lock           | Switch               | Child Lock                               |            |
-| speedLevel           | Number               | Speed Level                              |            |
+| speedLevel           | Dimmer               | Speed Level                              |            |
 | speed                | Number               | Speed                                    |            |
-| naturalLevel         | Number               | Natural Level                            |            |
+| naturalLevel         | Dimmer               | Natural Level                            |            |
 | temp_dec             | Number               | Temperature                              |            |
 | humidity             | Number:Dimensionless | Humidity                                 |            |
-| acPower              | String               | AC Power                                 |            |
+| acPower              | Switch               | AC Power                                 |            |
 | mode                 | String               | Battery Charge                           |            |
 | battery              | Number               | Battery                                  |            |
-| move                 | String               | Move Direction                           |            |
+| move                 | String               | Move Direction                           | Value mapping `[""="None","left"="Left","right"="Right"]` |
 
 ### Smartmi Inverter Pedestal Fan (<a name="zhimi-fan-za1">zhimi.fan.za1</a>) Channels
 
@@ -4696,16 +5425,16 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | power                | Switch               | Power                                    |            |
 | angleEnable          | Switch               | Rotation                                 |            |
 | usedhours            | Number:Time          | Run Time                                 |            |
-| angle                | Number               | Angle                                    |            |
-| poweroffTime         | Number               | Timer                                    |            |
+| angle                | Number:Angle         | Angle                                    | Value mapping `["30"="30","60"="60","90"="90","120"="120"]` |
+| poweroffTime         | Number:Time          | Power-Off Timer                          |            |
 | buzzer               | Switch               | Buzzer                                   |            |
-| led_b                | Number               | LED                                      |            |
+| led_b                | Number               | LED                                      | Value mapping `["0"="Bright","1"="Dimmed","2"="Off"]` |
 | child_lock           | Switch               | Child Lock                               |            |
-| speedLevel           | Number               | Speed Level                              |            |
+| speedLevel           | Dimmer               | Speed Level                              |            |
 | speed                | Number               | Speed                                    |            |
-| naturalLevel         | Number               | Natural Level                            |            |
+| naturalLevel         | Dimmer               | Natural Level                            |            |
 | acPower              | Switch               | AC Power                                 |            |
-| move                 | String               | Move Direction                           |            |
+| move                 | String               | Move Direction                           | Value mapping `[""="None","left"="Left","right"="Right"]` |
 
 ### Smartmi Standing Fan 2 (<a name="zhimi-fan-za3">zhimi.fan.za3</a>) Channels
 
@@ -4722,7 +5451,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | speedLevel           | Number               | Speed Level                              |            |
 | speed                | Number               | Speed                                    |            |
 | naturalLevel         | Number               | Natural Level                            |            |
-| move                 | String               | Move Direction                           |            |
+| move                 | String               | Move Direction                           | Value mapping `[""="None","left"="Left","right"="Right"]` |
 
 ### Smartmi Standing Fan 2S (<a name="zhimi-fan-za4">zhimi.fan.za4</a>) Channels
 
@@ -4739,7 +5468,7 @@ e.g. `openhab:send actionCommand 'upd_timer["1498595904821", "on"]'` would enabl
 | speedLevel           | Number               | Speed Level                              |            |
 | speed                | Number               | Speed                                    |            |
 | naturalLevel         | Number               | Natural Level                            |            |
-| move                 | String               | Move Direction                           |            |
+| move                 | String               | Move Direction                           | Value mapping `[""="None","left"="Left","right"="Right"]` |
 
 ### Smartmi Standing Fan 3  (<a name="zhimi-fan-za5">zhimi.fan.za5</a>) Channels
 
@@ -5044,34 +5773,76 @@ Switch lastCompleted  "Last Cleaning Completed"    (gVacLast) {channel="miio:vac
 Image map "Cleaning Map" (gVacLast) {channel="miio:vacuum:034F0E45:cleaning#map"}
 ```
 
-Note: cleaning map is only available with cloud access.
 
-There are several advanced channels, which may be useful in rules (e.g. for individual room cleaning etc)
-In case your vacuum does not support one of these commands, it will show "unsupported_method" for string channels or no value for numeric channels.
+### Mi Air Frying Pan (careli.fryer.maf01) item file lines
 
-| Type    | Channel                           | Description                |
-|---------|-----------------------------------|----------------------------|
-| Number  | status#segment_status             | Segment Status             |
-| Number  | status#map_status                 | Map Box Status             |
-| Number  | status#led_status                 | Led Box Status             |
-| String  | info#carpet_mode                  | Carpet Mode details        |
-| String  | info#fw_features                  | Firmware Features          |
-| String  | info#room_mapping                 | Room Mapping details       |
-| String  | info#multi_maps_list              | Maps Listing details       |
+note: Autogenerated example. Replace the id (fryer) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
-Additionally depending on the capabilities of your robot vacuum other channels may be enabled at runtime
+```
+Group G_fryer "Mi Air Frying Pan" <status>
+String actions "Actions" (G_fryer) {channel="miio:basic:fryer:actions"}
+Number status "Air Fryer - Status" (G_fryer) {channel="miio:basic:fryer:status"}
+Number fault "Air Fryer - Device Fault" (G_fryer) {channel="miio:basic:fryer:fault"}
+Number:Time target_time "Air Fryer - Target Time" (G_fryer) {channel="miio:basic:fryer:target_time"}
+Number:Temperature target_temperature "Air Fryer - Target Temperature" (G_fryer) {channel="miio:basic:fryer:target_temperature"}
+Number:Time left_time "Air Fryer - Left Time" (G_fryer) {channel="miio:basic:fryer:left_time"}
+String recipe_id "Custom - Recipe Id" (G_fryer) {channel="miio:basic:fryer:recipe_id"}
+String recipe_name "Custom - Recipe Name" (G_fryer) {channel="miio:basic:fryer:recipe_name"}
+Number:Time work_time "Custom - Work Time" (G_fryer) {channel="miio:basic:fryer:work_time"}
+Number:Temperature work_temp "Custom - Work Temp" (G_fryer) {channel="miio:basic:fryer:work_temp"}
+Number:Time appoint_time "Custom - Appoint Time" (G_fryer) {channel="miio:basic:fryer:appoint_time"}
+Number food_quantity "Custom - Food Quantity" (G_fryer) {channel="miio:basic:fryer:food_quantity"}
+Number preheat_switch "Custom - Preheat Switch" (G_fryer) {channel="miio:basic:fryer:preheat_switch"}
+Number:Time appoint_time_left "Custom - Appoint Time Left" (G_fryer) {channel="miio:basic:fryer:appoint_time_left"}
+String recipe_sync "Custom - Recipe Sync" (G_fryer) {channel="miio:basic:fryer:recipe_sync"}
+Number turn_pot "Custom - Turn Pot" (G_fryer) {channel="miio:basic:fryer:turn_pot"}
+```
 
-| Type    | Channel                           | Description                |
-|---------|-----------------------------------|----------------------------|
-| Switch  | status#water_box_status           | Water Box Status           |
-| Switch  | status#lock_status                | Lock Status                |
-| Number  | status#water_box_mode             | Water Box Mode             |
-| Switch  | status#water_box_carriage_status  | Water Box Carriage Status  |
-| Switch  | status#mop_forbidden_enable       | Mop Forbidden              |
-| Switch  | status#is_locating                | Robot is locating          |
-| Number  | actions#segment                   | Room Clean  (enter room #) |
+### Mi Smart Air Fryer (3.5L) (careli.fryer.maf02) item file lines
 
+note: Autogenerated example. Replace the id (fryer) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
+```
+Group G_fryer "Mi Smart Air Fryer (3.5L)" <status>
+String actions "Actions" (G_fryer) {channel="miio:basic:fryer:actions"}
+Number status "Air Fryer - Status" (G_fryer) {channel="miio:basic:fryer:status"}
+Number fault "Air Fryer - Device Fault" (G_fryer) {channel="miio:basic:fryer:fault"}
+Number:Time target_time "Air Fryer - Target Time" (G_fryer) {channel="miio:basic:fryer:target_time"}
+Number:Temperature target_temperature "Air Fryer - Target Temperature" (G_fryer) {channel="miio:basic:fryer:target_temperature"}
+Number:Time left_time "Air Fryer - Left Time" (G_fryer) {channel="miio:basic:fryer:left_time"}
+String recipe_id "Custom - Recipe Id" (G_fryer) {channel="miio:basic:fryer:recipe_id"}
+Number:Time work_time "Custom - Work Time" (G_fryer) {channel="miio:basic:fryer:work_time"}
+Number:Temperature work_temp "Custom - Work Temp" (G_fryer) {channel="miio:basic:fryer:work_temp"}
+Number:Time appoint_time "Custom - Appoint Time" (G_fryer) {channel="miio:basic:fryer:appoint_time"}
+Number food_quantity "Custom - Food Quantity" (G_fryer) {channel="miio:basic:fryer:food_quantity"}
+Number preheat_switch "Custom - Preheat Switch" (G_fryer) {channel="miio:basic:fryer:preheat_switch"}
+Number:Time appoint_time_left "Custom - Appoint Time Left" (G_fryer) {channel="miio:basic:fryer:appoint_time_left"}
+Number turn_pot "Custom - Turn Pot" (G_fryer) {channel="miio:basic:fryer:turn_pot"}
+```
+
+### Mi Air Frying Pan (careli.fryer.maf03) item file lines
+
+note: Autogenerated example. Replace the id (fryer) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_fryer "Mi Air Frying Pan" <status>
+String actions "Actions" (G_fryer) {channel="miio:basic:fryer:actions"}
+Number status "Air Fryer - Status" (G_fryer) {channel="miio:basic:fryer:status"}
+Number fault "Air Fryer - Device Fault" (G_fryer) {channel="miio:basic:fryer:fault"}
+Number:Time target_time "Air Fryer - Target Time" (G_fryer) {channel="miio:basic:fryer:target_time"}
+Number:Temperature target_temperature "Air Fryer - Target Temperature" (G_fryer) {channel="miio:basic:fryer:target_temperature"}
+Number:Time left_time "Air Fryer - Left Time" (G_fryer) {channel="miio:basic:fryer:left_time"}
+String recipe_id "Custom - Recipe Id" (G_fryer) {channel="miio:basic:fryer:recipe_id"}
+String recipe_name "Custom - Recipe Name" (G_fryer) {channel="miio:basic:fryer:recipe_name"}
+Number:Time work_time "Custom - Work Time" (G_fryer) {channel="miio:basic:fryer:work_time"}
+Number:Temperature work_temp "Custom - Work Temp" (G_fryer) {channel="miio:basic:fryer:work_temp"}
+Number:Time appoint_time "Custom - Appoint Time" (G_fryer) {channel="miio:basic:fryer:appoint_time"}
+Number food_quantity "Custom - Food Quantity" (G_fryer) {channel="miio:basic:fryer:food_quantity"}
+Number preheat_switch "Custom - Preheat Switch" (G_fryer) {channel="miio:basic:fryer:preheat_switch"}
+Number:Time appoint_time_left "Custom - Appoint Time Left" (G_fryer) {channel="miio:basic:fryer:appoint_time_left"}
+String recipe_sync "Custom - Recipe Sync" (G_fryer) {channel="miio:basic:fryer:recipe_sync"}
+Number turn_pot "Custom - Turn Pot" (G_fryer) {channel="miio:basic:fryer:turn_pot"}
+```
 
 ### Qingping Air Monitor Lite (cgllc.airm.cgdn1) item file lines
 
@@ -5142,6 +5913,8 @@ Number:Time off_duration "Imilab Timer - Off Duration" (G_plug) {channel="miio:b
 Number:Time countdown "Imilab Timer - Countdown" (G_plug) {channel="miio:basic:plug:countdown"}
 Switch task_switch "Imilab Timer - Task Switch" (G_plug) {channel="miio:basic:plug:task-switch"}
 Switch countdown_info "Imilab Timer - Countdown Info" (G_plug) {channel="miio:basic:plug:countdown-info"}
+String bt_gw "BT Gateway" (G_plug) {channel="miio:basic:plug:bt-gw"}
+String bt_gw_devices "Connected BT Gateway Devices" (G_plug) {channel="miio:basic:plug:bt-gw-devices"}
 ```
 
 ### Mi Smart Plug WiFi (chuangmi.plug.hmi205) item file lines
@@ -5262,12 +6035,12 @@ Switch sound "Notification Sounds" (G_humidifier) {channel="miio:basic:humidifie
 Number watertankstatus "Watertank Status" (G_humidifier) {channel="miio:basic:humidifier:watertankstatus"}
 ```
 
-### Mi S Smart humidifer  (deerma.humidifier.jsq1) item file lines
+### Mi S Smart Humidifer  (deerma.humidifier.jsq1) item file lines
 
 note: Autogenerated example. Replace the id (humidifier) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_humidifier "Mi S Smart humidifer " <status>
+Group G_humidifier "Mi S Smart Humidifer " <status>
 Switch power "Power" (G_humidifier) {channel="miio:basic:humidifier:power"}
 Number mode "Mode" (G_humidifier) {channel="miio:basic:humidifier:mode"}
 Number:Dimensionless humidity "Humidity" (G_humidifier) {channel="miio:basic:humidifier:humidity"}
@@ -5276,6 +6049,42 @@ Switch led "LED indicator Light" (G_humidifier) {channel="miio:basic:humidifier:
 Switch sound "Notification Sounds" (G_humidifier) {channel="miio:basic:humidifier:sound"}
 Number watertankstatus "Watertank Status" (G_humidifier) {channel="miio:basic:humidifier:watertankstatus"}
 Switch wet_and_protect "Wet and Protect" (G_humidifier) {channel="miio:basic:humidifier:wet_and_protect"}
+```
+
+### Mi Smart Antibacterial Humidifier (deerma.humidifier.jsq5) item file lines
+
+note: Autogenerated example. Replace the id (humidifier) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_humidifier "Mi Smart Antibacterial Humidifier" <status>
+Switch on "Humidifier - Switch Status" (G_humidifier) {channel="miio:basic:humidifier:on"}
+Number fault "Humidifier - Device Fault" (G_humidifier) {channel="miio:basic:humidifier:fault"}
+Number fan_level "Humidifier - Fan Level" (G_humidifier) {channel="miio:basic:humidifier:fan_level"}
+Number:Dimensionless target_humidity "Humidifier - Target Humidity" (G_humidifier) {channel="miio:basic:humidifier:target_humidity"}
+Number:Dimensionless relative_humidity "Environment - Relative Humidity" (G_humidifier) {channel="miio:basic:humidifier:relative_humidity"}
+Number:Temperature temperature "Environment - Temperature" (G_humidifier) {channel="miio:basic:humidifier:temperature"}
+Switch alarm "Alarm - Alarm" (G_humidifier) {channel="miio:basic:humidifier:alarm"}
+Switch on1 "Indicator Light - Switch Status" (G_humidifier) {channel="miio:basic:humidifier:on1"}
+Switch water_shortage_fault "Custom - Water Shortage Fault" (G_humidifier) {channel="miio:basic:humidifier:water_shortage_fault"}
+Switch the_tank_filed "Custom - The Tank Filed" (G_humidifier) {channel="miio:basic:humidifier:the_tank_filed"}
+```
+
+### Mi Smart Humidifer S (deerma.humidifier.jsqs) item file lines
+
+note: Autogenerated example. Replace the id (humidifier) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_humidifier "Mi Smart Humidifer S" <status>
+Switch on "Humidifier - Switch Status" (G_humidifier) {channel="miio:basic:humidifier:on"}
+Number fault "Humidifier - Device Fault" (G_humidifier) {channel="miio:basic:humidifier:fault"}
+Number fan_level "Humidifier - Fan Level" (G_humidifier) {channel="miio:basic:humidifier:fan_level"}
+Number:Dimensionless target_humidity "Humidifier - Target Humidity" (G_humidifier) {channel="miio:basic:humidifier:target_humidity"}
+Number:Dimensionless relative_humidity "Environment - Relative Humidity" (G_humidifier) {channel="miio:basic:humidifier:relative_humidity"}
+Number:Temperature temperature "Environment - Temperature" (G_humidifier) {channel="miio:basic:humidifier:temperature"}
+Switch alarm "Alarm - Alarm" (G_humidifier) {channel="miio:basic:humidifier:alarm"}
+Switch on1 "Indicator Light - Switch Status" (G_humidifier) {channel="miio:basic:humidifier:on1"}
+Switch water_shortage_fault "Custom - Water Shortage Fault" (G_humidifier) {channel="miio:basic:humidifier:water_shortage_fault"}
+Switch the_tank_filed "Custom - The Tank Filed" (G_humidifier) {channel="miio:basic:humidifier:the_tank_filed"}
 ```
 
 ### Mi Smart Humidifier (deerma.humidifier.mjjsq) item file lines
@@ -5349,15 +6158,12 @@ note: Autogenerated example. Replace the id (fan) in the channel with your own. 
 
 ```
 Group G_fan "Mi Smart Standing Fan 2 Lite" <status>
-String Manufacturer "Device Information-Device Manufacturer" (G_fan) {channel="miio:basic:fan:Manufacturer"}
-String Model "Device Information-Device Model" (G_fan) {channel="miio:basic:fan:Model"}
-String SerialNumber "Device Information-Device Serial Number" (G_fan) {channel="miio:basic:fan:SerialNumber"}
-String FirmwareRevision "Device Information-Current Firmware Version" (G_fan) {channel="miio:basic:fan:FirmwareRevision"}
-Switch On "Fan-Switch Status" (G_fan) {channel="miio:basic:fan:On"}
+String actions "Actions" (G_fan) {channel="miio:basic:fan:actions"}
+Switch On "Fan - Switch Status" (G_fan) {channel="miio:basic:fan:On"}
 Number FanLevel "Fan-Fan Level" (G_fan) {channel="miio:basic:fan:FanLevel"}
 Switch HorizontalSwing "Fan-Horizontal Swing" (G_fan) {channel="miio:basic:fan:HorizontalSwing"}
 Number Mode "Fan-Mode" (G_fan) {channel="miio:basic:fan:Mode"}
-Number OffDelayTime "Fan-Power Off Delay Time" (G_fan) {channel="miio:basic:fan:OffDelayTime"}
+Number:Time OffDelayTime "Fan-Power Off Delay Time" (G_fan) {channel="miio:basic:fan:OffDelayTime"}
 Switch Alarm "Fan-Alarm" (G_fan) {channel="miio:basic:fan:Alarm"}
 Switch Brightness "Fan-Brightness" (G_fan) {channel="miio:basic:fan:Brightness"}
 Switch PhysicalControlsLocked "Physical Control Locked-Physical Control Locked" (G_fan) {channel="miio:basic:fan:PhysicalControlsLocked"}
@@ -5386,15 +6192,12 @@ note: Autogenerated example. Replace the id (fan) in the channel with your own. 
 
 ```
 Group G_fan "Mi Smart Standing Fan 1C" <status>
-String Manufacturer "Device Information-Device Manufacturer" (G_fan) {channel="miio:basic:fan:Manufacturer"}
-String Model "Device Information-Device Model" (G_fan) {channel="miio:basic:fan:Model"}
-String SerialNumber "Device Information-Device Serial Number" (G_fan) {channel="miio:basic:fan:SerialNumber"}
-String FirmwareRevision "Device Information-Current Firmware Version" (G_fan) {channel="miio:basic:fan:FirmwareRevision"}
-Switch On "Fan-Switch Status" (G_fan) {channel="miio:basic:fan:On"}
+String actions "Actions" (G_fan) {channel="miio:basic:fan:actions"}
+Switch On "Fan - Switch Status" (G_fan) {channel="miio:basic:fan:On"}
 Number FanLevel "Fan-Fan Level" (G_fan) {channel="miio:basic:fan:FanLevel"}
 Switch HorizontalSwing "Fan-Horizontal Swing" (G_fan) {channel="miio:basic:fan:HorizontalSwing"}
 Number Mode "Fan-Mode" (G_fan) {channel="miio:basic:fan:Mode"}
-Number OffDelayTime "Fan-Power Off Delay Time" (G_fan) {channel="miio:basic:fan:OffDelayTime"}
+Number:Time OffDelayTime "Fan-Power Off Delay Time" (G_fan) {channel="miio:basic:fan:OffDelayTime"}
 Switch Alarm "Fan-Alarm" (G_fan) {channel="miio:basic:fan:Alarm"}
 Switch Brightness "Fan-Brightness" (G_fan) {channel="miio:basic:fan:Brightness"}
 Switch PhysicalControlsLocked "Physical Control Locked-Physical Control Locked" (G_fan) {channel="miio:basic:fan:PhysicalControlsLocked"}
@@ -5406,17 +6209,14 @@ note: Autogenerated example. Replace the id (fan) in the channel with your own. 
 
 ```
 Group G_fan "Mi Smart Tower Fan" <status>
-String Manufacturer "Device Information-Device Manufacturer" (G_fan) {channel="miio:basic:fan:Manufacturer"}
-String Model "Device Information-Device Model" (G_fan) {channel="miio:basic:fan:Model"}
-String SerialNumber "Device Information-Device Serial Number" (G_fan) {channel="miio:basic:fan:SerialNumber"}
-String FirmwareRevision "Device Information-Current Firmware Version" (G_fan) {channel="miio:basic:fan:FirmwareRevision"}
+String actions "Actions" (G_fan) {channel="miio:basic:fan:actions"}
 Switch On "Fan-Switch Status" (G_fan) {channel="miio:basic:fan:On"}
 Number FanLevel "Fan-Fan Level" (G_fan) {channel="miio:basic:fan:FanLevel"}
 Number Mode "Fan-Mode" (G_fan) {channel="miio:basic:fan:Mode"}
 Switch HorizontalSwing "Fan-Horizontal Swing" (G_fan) {channel="miio:basic:fan:HorizontalSwing"}
 Number HorizontalAngle "Fan-Horizontal Angle" (G_fan) {channel="miio:basic:fan:HorizontalAngle"}
 Switch Alarm "Fan-Alarm" (G_fan) {channel="miio:basic:fan:Alarm"}
-Number OffDelayTime "Fan-Power Off Delay Time" (G_fan) {channel="miio:basic:fan:OffDelayTime"}
+Number:Time OffDelayTime "Fan - Power Off Delay Time" (G_fan) {channel="miio:basic:fan:OffDelayTime"}
 Switch Brightness "Fan-Brightness" (G_fan) {channel="miio:basic:fan:Brightness"}
 Number MotorControl "Fan-Motor Control" (G_fan) {channel="miio:basic:fan:MotorControl"}
 Number SpeedLevel "Fan-Speed Level" (G_fan) {channel="miio:basic:fan:SpeedLevel"}
@@ -5429,21 +6229,58 @@ note: Autogenerated example. Replace the id (fan) in the channel with your own. 
 
 ```
 Group G_fan "Mi Smart Standing Fan 2" <status>
-String Manufacturer "Device Information-Device Manufacturer" (G_fan) {channel="miio:basic:fan:Manufacturer"}
-String Model "Device Information-Device Model" (G_fan) {channel="miio:basic:fan:Model"}
-String SerialNumber "Device Information-Device Serial Number" (G_fan) {channel="miio:basic:fan:SerialNumber"}
-String FirmwareRevision "Device Information-Current Firmware Version" (G_fan) {channel="miio:basic:fan:FirmwareRevision"}
+String actions "Actions" (G_fan) {channel="miio:basic:fan:actions"}
 Switch On "Fan-Switch Status" (G_fan) {channel="miio:basic:fan:On"}
 Number FanLevel "Fan-Fan Level" (G_fan) {channel="miio:basic:fan:FanLevel"}
 Number Mode "Fan-Mode" (G_fan) {channel="miio:basic:fan:Mode"}
 Switch HorizontalSwing "Fan-Horizontal Swing" (G_fan) {channel="miio:basic:fan:HorizontalSwing"}
 Number HorizontalAngle "Fan-Horizontal Angle" (G_fan) {channel="miio:basic:fan:HorizontalAngle"}
 Switch Alarm "Fan-Alarm" (G_fan) {channel="miio:basic:fan:Alarm"}
-Number OffDelayTime "Fan-Power Off Delay Time" (G_fan) {channel="miio:basic:fan:OffDelayTime"}
+Number:Time OffDelayTime "Fan - Power Off Delay Time" (G_fan) {channel="miio:basic:fan:OffDelayTime"}
 Switch Brightness "Fan-Brightness" (G_fan) {channel="miio:basic:fan:Brightness"}
 Number MotorControl "Fan-Motor Control" (G_fan) {channel="miio:basic:fan:MotorControl"}
 Number SpeedLevel "Fan-Speed Level" (G_fan) {channel="miio:basic:fan:SpeedLevel"}
 Switch PhysicalControlsLocked "Physical Control Locked-Physical Control Locked" (G_fan) {channel="miio:basic:fan:PhysicalControlsLocked"}
+```
+
+### Mi Smart Standing Fan Pro (dmaker.fan.p15) item file lines
+
+note: Autogenerated example. Replace the id (fan) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_fan "Mi Smart Standing Fan Pro" <status>
+Switch on "Fan - Switch Status" (G_fan) {channel="miio:basic:fan:on"}
+Number fan_level "Fan - Gear Fan Level" (G_fan) {channel="miio:basic:fan:fan_level"}
+Number mode "Fan - Mode" (G_fan) {channel="miio:basic:fan:mode"}
+Switch horizontal_swing "Fan - Horizontal Swing" (G_fan) {channel="miio:basic:fan:horizontal_swing"}
+Number horizontal_angle "Fan - Horizontal Angle" (G_fan) {channel="miio:basic:fan:horizontal_angle"}
+Number status "Fan - Status" (G_fan) {channel="miio:basic:fan:status"}
+Switch on1 "Indicator Light - Switch Status" (G_fan) {channel="miio:basic:fan:on1"}
+Switch alarm "Alarm - Alarm" (G_fan) {channel="miio:basic:fan:alarm"}
+Number fault "Motor Controller - Device Fault" (G_fan) {channel="miio:basic:fan:fault"}
+Switch physical_controls_locked "Physical Control Locked - Physical Control Locked" (G_fan) {channel="miio:basic:fan:physical_controls_locked"}
+Number:Time off_delay_time "Off Delay Time - Off Delay Time" (G_fan) {channel="miio:basic:fan:off_delay_time"}
+String actions "Actions" (G_fan) {channel="miio:basic:fan:actions"}
+```
+
+### Mi Smart Standing Fan 2 (dmaker.fan.p18) item file lines
+
+note: Autogenerated example. Replace the id (fan) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_fan "Mi Smart Standing Fan 2" <status>
+String actions "Actions" (G_fan) {channel="miio:basic:fan:actions"}
+Switch on "Fan - Switch Status" (G_fan) {channel="miio:basic:fan:on"}
+Number fan_level "Fan - Fan Level" (G_fan) {channel="miio:basic:fan:fan_level"}
+Number mode "Fan - Mode" (G_fan) {channel="miio:basic:fan:mode"}
+Switch horizontal_swing "Fan - Horizontal Swing" (G_fan) {channel="miio:basic:fan:horizontal_swing"}
+Number horizontal_angle "Fan - Horizontal Angle" (G_fan) {channel="miio:basic:fan:horizontal_angle"}
+Number:Time off_delay_time "Fan - Power Off Delay Time" (G_fan) {channel="miio:basic:fan:off_delay_time"}
+Switch brightness "Fan - Brightness" (G_fan) {channel="miio:basic:fan:brightness"}
+Switch alarm "Fan - Alarm" (G_fan) {channel="miio:basic:fan:alarm"}
+Number motor_control "Fan - Motor Control" (G_fan) {channel="miio:basic:fan:motor_control"}
+Number speed_level "Fan - Speed Level" (G_fan) {channel="miio:basic:fan:speed_level"}
+Switch physical_controls_locked "Physical Control Locked - Physical Control Locked" (G_fan) {channel="miio:basic:fan:physical_controls_locked"}
 ```
 
 ### Mi Robot Vacuum Mop 1C STYTJ01ZHM (dreame.vacuum.mc1808) item file lines
@@ -5455,14 +6292,15 @@ Group G_vacuum "Mi Robot Vacuum Mop 1C STYTJ01ZHM" <status>
 String vacuumaction "Vacuum Action" (G_vacuum) {channel="miio:basic:vacuum:vacuumaction"}
 Number BatteryLevel "Battery-Battery Level" (G_vacuum) {channel="miio:basic:vacuum:BatteryLevel"}
 Number ChargingState "Battery-Charging State" (G_vacuum) {channel="miio:basic:vacuum:ChargingState"}
+Number water_mode "Water Mode" (G_vacuum) {channel="miio:basic:vacuum:water-mode"}
 Number Fault "Robot Cleaner-Device Fault" (G_vacuum) {channel="miio:basic:vacuum:Fault"}
 Number Status "Robot Cleaner-Status" (G_vacuum) {channel="miio:basic:vacuum:Status"}
 Number:Time BrushLeftTime "Main Cleaning Brush-Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:BrushLeftTime"}
-Number BrushLifeLevel "Main Cleaning Brush-Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:BrushLifeLevel"}
-Number FilterLifeLevel "Filter - Filter Life Level" (G_vacuum) {channel="miio:basic:vacuum:FilterLifeLevel"}
+Number:Dimensionless BrushLifeLevel "Main Cleaning Brush-Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:BrushLifeLevel"}
+Number:Dimensionless FilterLifeLevel "Filter - Filter Life Level" (G_vacuum) {channel="miio:basic:vacuum:FilterLifeLevel"}
 Number:Time FilterLeftTime "Filter-Filter Left Time" (G_vacuum) {channel="miio:basic:vacuum:FilterLeftTime"}
 Number:Time BrushLeftTime1 "Side Cleaning Brush-Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:BrushLeftTime1"}
-Number BrushLifeLevel1 "Side Cleaning Brush-Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:BrushLifeLevel1"}
+Number:Dimensionless BrushLifeLevel1 "Side Cleaning Brush-Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:BrushLifeLevel1"}
 Number WorkMode "clean-workmode" (G_vacuum) {channel="miio:basic:vacuum:WorkMode"}
 String Area "clean-area" (G_vacuum) {channel="miio:basic:vacuum:Area"}
 String Timer "clean-timer" (G_vacuum) {channel="miio:basic:vacuum:Timer"}
@@ -5568,6 +6406,117 @@ Number first_clean_time "Clean Logs - First Clean Time" (G_vacuum) {channel="mii
 Number:Time total_clean_time "Clean Logs - Total Clean Time" (G_vacuum) {channel="miio:basic:vacuum:total-clean-time"}
 Number total_clean_times "Clean Logs - Total Clean Times" (G_vacuum) {channel="miio:basic:vacuum:total-clean-times"}
 Number total_clean_area "Clean Logs - Total Clean Area" (G_vacuum) {channel="miio:basic:vacuum:total-clean-area"}
+```
+
+### Dreame Bot W10 (dreame.vacuum.p2027) item file lines
+
+note: Autogenerated example. Replace the id (vacuum) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_vacuum "Dreame Bot W10" <status>
+String actions "Actions" (G_vacuum) {channel="miio:basic:vacuum:actions"}
+Number status "Robot Cleaner - Status" (G_vacuum) {channel="miio:basic:vacuum:status"}
+Number fault "Robot Cleaner - Device Fault" (G_vacuum) {channel="miio:basic:vacuum:fault"}
+Number mode "Robot Cleaner - Mode" (G_vacuum) {channel="miio:basic:vacuum:mode"}
+Number:Dimensionless battery_level "Battery - Battery Level" (G_vacuum) {channel="miio:basic:vacuum:battery_level"}
+Number charging_state "Battery - Charging State" (G_vacuum) {channel="miio:basic:vacuum:charging_state"}
+Number:Time brush_left_time "Main Cleaning Brush - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush_left_time"}
+Number:Dimensionless brush_life_level "Main Cleaning Brush - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush_life_level"}
+Number:Time brush_left_time1 "Side Cleaning Brush - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush_left_time1"}
+Number:Dimensionless brush_life_level1 "Side Cleaning Brush - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush_life_level1"}
+Number:Dimensionless filter_life_level "Filter - Filter Life Level" (G_vacuum) {channel="miio:basic:vacuum:filter_life_level"}
+Number:Time filter_left_time "Filter - Filter Left Time" (G_vacuum) {channel="miio:basic:vacuum:filter_left_time"}
+Number work_mode "Vacuum Extend - Work Mode" (G_vacuum) {channel="miio:basic:vacuum:work_mode"}
+Number:Time cleaning_time "Vacuum Extend - Cleaning Time" (G_vacuum) {channel="miio:basic:vacuum:cleaning_time"}
+Number:Area cleaning_area "Vacuum Extend - Cleaning Area" (G_vacuum) {channel="miio:basic:vacuum:cleaning-area"}
+Number cleaning_mode "Vacuum Extend - Cleaning Mode" (G_vacuum) {channel="miio:basic:vacuum:cleaning_mode"}
+Number mop_mode "Vacuum Extend - Mop Mode" (G_vacuum) {channel="miio:basic:vacuum:mop_mode"}
+Number waterbox_status "Vacuum Extend - Waterbox Status" (G_vacuum) {channel="miio:basic:vacuum:waterbox_status"}
+Number task_status "Vacuum Extend - Task Status" (G_vacuum) {channel="miio:basic:vacuum:task_status"}
+String clean_extend_data "Vacuum Extend - Clean Extend Data" (G_vacuum) {channel="miio:basic:vacuum:clean_extend_data"}
+Number break_point_restart "Vacuum Extend - Break Point Restart" (G_vacuum) {channel="miio:basic:vacuum:break_point_restart"}
+Number carpet_press "Vacuum Extend - Carpet Press" (G_vacuum) {channel="miio:basic:vacuum:carpet_press"}
+String remote_state "Vacuum Extend - Remote State" (G_vacuum) {channel="miio:basic:vacuum:remote_state"}
+Number:Time clean_rags_tip "Vacuum Extend - Clean Rags Tip" (G_vacuum) {channel="miio:basic:vacuum:clean_rags_tip"}
+Number:Time keep_sweeper_time "Vacuum Extend - Keep Sweeper Time" (G_vacuum) {channel="miio:basic:vacuum:keep_sweeper_time"}
+String faults "Vacuum Extend - Faults" (G_vacuum) {channel="miio:basic:vacuum:faults"}
+String nation_matched "Vacuum Extend - Nation Matched" (G_vacuum) {channel="miio:basic:vacuum:nation_matched"}
+Number relocation_status "Vacuum Extend - Relocation Status" (G_vacuum) {channel="miio:basic:vacuum:relocation_status"}
+Number mop_status "Vacuum Extend - Mop Status" (G_vacuum) {channel="miio:basic:vacuum:mop_status"}
+Number child_lock "Vacuum Extend - Child Lock" (G_vacuum) {channel="miio:basic:vacuum:child_lock"}
+Number clean_cancel "Vacuum Extend - Clean Cancel" (G_vacuum) {channel="miio:basic:vacuum:clean_cancel"}
+Switch enable "Do Not Disturb - Enable" (G_vacuum) {channel="miio:basic:vacuum:enable"}
+String start_time "Do Not Disturb - Start Time" (G_vacuum) {channel="miio:basic:vacuum:start_time"}
+String end_time "Do Not Disturb - End Time" (G_vacuum) {channel="miio:basic:vacuum:end_time"}
+String frame_info "Map - Frame Info" (G_vacuum) {channel="miio:basic:vacuum:frame_info"}
+String map_extend_data "Map - Map Extend Data" (G_vacuum) {channel="miio:basic:vacuum:map_extend_data"}
+Number mult_map_state "Map - Mult Map State" (G_vacuum) {channel="miio:basic:vacuum:mult_map_state"}
+String mult_map_info "Map - Mult Map Info" (G_vacuum) {channel="miio:basic:vacuum:mult_map_info"}
+Number:Dimensionless volume "Audio - Volume" (G_vacuum) {channel="miio:basic:vacuum:volume"}
+String voice_packet_id "Audio - Voice Packet Id" (G_vacuum) {channel="miio:basic:vacuum:voice_packet_id"}
+String voice_change_state "Audio - Voice Change State" (G_vacuum) {channel="miio:basic:vacuum:voice_change_state"}
+String set_voice "Audio - Set Voice" (G_vacuum) {channel="miio:basic:vacuum:set_voice"}
+String time_zone "Time - Time Zone" (G_vacuum) {channel="miio:basic:vacuum:time_zone"}
+String timer_clean "Time - Timer Clean" (G_vacuum) {channel="miio:basic:vacuum:timer_clean"}
+Number first_clean_time "Clean Logs - First Clean Time" (G_vacuum) {channel="miio:basic:vacuum:first_clean_time"}
+Number:Time total_clean_time "Clean Logs - Total Clean Time" (G_vacuum) {channel="miio:basic:vacuum:total_clean_time"}
+Number total_clean_times "Clean Logs - Total Clean Times" (G_vacuum) {channel="miio:basic:vacuum:total_clean_times"}
+Number total_clean_area "Clean Logs - Total Clean Area" (G_vacuum) {channel="miio:basic:vacuum:total_clean_area"}
+```
+
+### Dreame Bot Z10 Pro (dreame.vacuum.p2028) item file lines
+
+note: Autogenerated example. Replace the id (vacuum) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_vacuum "Dreame Bot Z10 Pro" <status>
+String actions "Actions" (G_vacuum) {channel="miio:basic:vacuum:actions"}
+Number status "Robot Cleaner - Status" (G_vacuum) {channel="miio:basic:vacuum:status"}
+Number fault "Robot Cleaner - Device Fault" (G_vacuum) {channel="miio:basic:vacuum:fault"}
+Number:Dimensionless battery_level "Battery - Battery Level" (G_vacuum) {channel="miio:basic:vacuum:battery_level"}
+Number charging_state "Battery - Charging State" (G_vacuum) {channel="miio:basic:vacuum:charging_state"}
+Number:Time brush_left_time "Main Cleaning Brush - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush_left_time"}
+Number:Dimensionless brush_life_level "Main Cleaning Brush - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush_life_level"}
+Number:Time brush_left_time1 "Side Cleaning Brush - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush_left_time1"}
+Number:Dimensionless brush_life_level1 "Side Cleaning Brush - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush_life_level1"}
+Number:Dimensionless filter_life_level "Filter - Filter Life Level" (G_vacuum) {channel="miio:basic:vacuum:filter_life_level"}
+Number:Time filter_left_time "Filter - Filter Left Time" (G_vacuum) {channel="miio:basic:vacuum:filter_left_time"}
+Number work_mode "Vacuum Extend - Work Mode" (G_vacuum) {channel="miio:basic:vacuum:work_mode"}
+Number:Time cleaning_time "Vacuum Extend - Cleaning Time" (G_vacuum) {channel="miio:basic:vacuum:cleaning_time"}
+Number:Area cleaning_area "Vacuum Extend - Cleaning Area" (G_vacuum) {channel="miio:basic:vacuum:cleaning-area"}
+Number cleaning_mode "Vacuum Extend - Cleaning Mode" (G_vacuum) {channel="miio:basic:vacuum:cleaning_mode"}
+Number mop_mode "Vacuum Extend - Mop Mode" (G_vacuum) {channel="miio:basic:vacuum:mop_mode"}
+Number waterbox_status "Vacuum Extend - Waterbox Status" (G_vacuum) {channel="miio:basic:vacuum:waterbox_status"}
+Number task_status "Vacuum Extend - Task Status" (G_vacuum) {channel="miio:basic:vacuum:task_status"}
+String clean_extend_data "Vacuum Extend - Clean Extend Data" (G_vacuum) {channel="miio:basic:vacuum:clean_extend_data"}
+Number break_point_restart "Vacuum Extend - Break Point Restart" (G_vacuum) {channel="miio:basic:vacuum:break_point_restart"}
+Number carpet_press "Vacuum Extend - Carpet Press" (G_vacuum) {channel="miio:basic:vacuum:carpet_press"}
+String remote_state "Vacuum Extend - Remote State" (G_vacuum) {channel="miio:basic:vacuum:remote_state"}
+Number:Time clean_rags_tip "Vacuum Extend - Clean Rags Tip" (G_vacuum) {channel="miio:basic:vacuum:clean_rags_tip"}
+Number:Time keep_sweeper_time "Vacuum Extend - Keep Sweeper Time" (G_vacuum) {channel="miio:basic:vacuum:keep_sweeper_time"}
+String faults "Vacuum Extend - Faults" (G_vacuum) {channel="miio:basic:vacuum:faults"}
+String nation_matched "Vacuum Extend - Nation Matched" (G_vacuum) {channel="miio:basic:vacuum:nation_matched"}
+Number relocation_status "Vacuum Extend - Relocation Status" (G_vacuum) {channel="miio:basic:vacuum:relocation_status"}
+Switch enable "Do Not Disturb - Enable" (G_vacuum) {channel="miio:basic:vacuum:enable"}
+String start_time "Do Not Disturb - Start Time" (G_vacuum) {channel="miio:basic:vacuum:start_time"}
+String end_time "Do Not Disturb - End Time" (G_vacuum) {channel="miio:basic:vacuum:end_time"}
+String frame_info "Map - Frame Info" (G_vacuum) {channel="miio:basic:vacuum:frame_info"}
+String map_extend_data "Map - Map Extend Data" (G_vacuum) {channel="miio:basic:vacuum:map_extend_data"}
+Number mult_map_state "Map - Mult Map State" (G_vacuum) {channel="miio:basic:vacuum:mult_map_state"}
+String mult_map_info "Map - Mult Map Info" (G_vacuum) {channel="miio:basic:vacuum:mult_map_info"}
+Number:Dimensionless volume "Audio - Volume" (G_vacuum) {channel="miio:basic:vacuum:volume"}
+String voice_packet_id "Audio - Voice Packet Id" (G_vacuum) {channel="miio:basic:vacuum:voice_packet_id"}
+String voice_change_state "Audio - Voice Change State" (G_vacuum) {channel="miio:basic:vacuum:voice_change_state"}
+String set_voice "Audio - Set Voice" (G_vacuum) {channel="miio:basic:vacuum:set_voice"}
+String time_zone "Time - Time Zone" (G_vacuum) {channel="miio:basic:vacuum:time_zone"}
+String timer_clean "Time - Timer Clean" (G_vacuum) {channel="miio:basic:vacuum:timer_clean"}
+Number first_clean_time "Clean Logs - First Clean Time" (G_vacuum) {channel="miio:basic:vacuum:first_clean_time"}
+Number:Time total_clean_time "Clean Logs - Total Clean Time" (G_vacuum) {channel="miio:basic:vacuum:total_clean_time"}
+Number total_clean_times "Clean Logs - Total Clean Times" (G_vacuum) {channel="miio:basic:vacuum:total_clean_times"}
+Number total_clean_area "Clean Logs - Total Clean Area" (G_vacuum) {channel="miio:basic:vacuum:total_clean_area"}
+Number auto_collect "Collect Dust - Auto Collect" (G_vacuum) {channel="miio:basic:vacuum:auto_collect"}
+Number clean_times "Collect Dust - Clean Times" (G_vacuum) {channel="miio:basic:vacuum:clean_times"}
+Number dust_enable "Collect Dust - Dust Enable" (G_vacuum) {channel="miio:basic:vacuum:dust_enable"}
 ```
 
 ### Trouver Robot LDS Vacuum-Mop Finder (dreame.vacuum.p2036) item file lines
@@ -5748,6 +6697,57 @@ Number first_clean_time "Clean Logs - First Clean Time" (G_vacuum) {channel="mii
 Number:Time total_clean_time "Clean Logs - Total Clean Time" (G_vacuum) {channel="miio:basic:vacuum:total-clean-time"}
 Number total_clean_times "Clean Logs - Total Clean Times" (G_vacuum) {channel="miio:basic:vacuum:total-clean-times"}
 Number total_clean_area "Clean Logs - Total Clean Area" (G_vacuum) {channel="miio:basic:vacuum:total-clean-area"}
+```
+
+### Dreame Bot D9 Max (dreame.vacuum.p2259) item file lines
+
+note: Autogenerated example. Replace the id (vacuum) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_vacuum "Dreame Bot D9 Max" <status>
+String actions "Actions" (G_vacuum) {channel="miio:basic:vacuum:actions"}
+Number status "Robot Cleaner - Status" (G_vacuum) {channel="miio:basic:vacuum:status"}
+Number fault "Robot Cleaner - Device Fault" (G_vacuum) {channel="miio:basic:vacuum:fault"}
+Number mode "Robot Cleaner - Mode" (G_vacuum) {channel="miio:basic:vacuum:mode"}
+Number:Dimensionless battery_level "Battery - Battery Level" (G_vacuum) {channel="miio:basic:vacuum:battery_level"}
+Number charging_state "Battery - Charging State" (G_vacuum) {channel="miio:basic:vacuum:charging_state"}
+Number:Time brush_left_time "Main Cleaning Brush - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush_left_time"}
+Number:Dimensionless brush_life_level "Main Cleaning Brush - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush_life_level"}
+Number:Time brush_left_time1 "Side Cleaning Brush - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush_left_time1"}
+Number:Dimensionless brush_life_level1 "Side Cleaning Brush - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush_life_level1"}
+Number:Dimensionless filter_life_level "Filter - Filter Life Level" (G_vacuum) {channel="miio:basic:vacuum:filter_life_level"}
+Number:Time filter_left_time "Filter - Filter Left Time" (G_vacuum) {channel="miio:basic:vacuum:filter_left_time"}
+Number work_mode "Vacuum Extend - Work Mode" (G_vacuum) {channel="miio:basic:vacuum:work_mode"}
+Number:Time cleaning_time "Vacuum Extend - Cleaning Time" (G_vacuum) {channel="miio:basic:vacuum:cleaning_time"}
+Number:Area cleaning_area "Vacuum Extend - Cleaning Area" (G_vacuum) {channel="miio:basic:vacuum:cleaning_area"}
+Number cleaning_mode "Vacuum Extend - Cleaning Mode" (G_vacuum) {channel="miio:basic:vacuum:cleaning_mode"}
+Number mop_mode "Vacuum Extend - Mop Mode" (G_vacuum) {channel="miio:basic:vacuum:mop_mode"}
+Number waterbox_status "Vacuum Extend - Waterbox Status" (G_vacuum) {channel="miio:basic:vacuum:waterbox_status"}
+Number task_status "Vacuum Extend - Task Status" (G_vacuum) {channel="miio:basic:vacuum:task_status"}
+String clean_extend_data "Vacuum Extend - Clean Extend Data" (G_vacuum) {channel="miio:basic:vacuum:clean_extend_data"}
+Number break_point_restart "Vacuum Extend - Break Point Restart" (G_vacuum) {channel="miio:basic:vacuum:break_point_restart"}
+Number carpet_press "Vacuum Extend - Carpet Press" (G_vacuum) {channel="miio:basic:vacuum:carpet_press"}
+String remote_state "Vacuum Extend - Remote State" (G_vacuum) {channel="miio:basic:vacuum:remote_state"}
+Number:Time clean_rags_tip "Vacuum Extend - Clean Rags Tip" (G_vacuum) {channel="miio:basic:vacuum:clean_rags_tip"}
+Number:Time keep_sweeper_time "Vacuum Extend - Keep Sweeper Time" (G_vacuum) {channel="miio:basic:vacuum:keep_sweeper_time"}
+String faults "Vacuum Extend - Faults" (G_vacuum) {channel="miio:basic:vacuum:faults"}
+Switch enable "Do Not Disturb - Enable" (G_vacuum) {channel="miio:basic:vacuum:enable"}
+String start_time "Do Not Disturb - Start Time" (G_vacuum) {channel="miio:basic:vacuum:start_time"}
+String end_time "Do Not Disturb - End Time" (G_vacuum) {channel="miio:basic:vacuum:end_time"}
+String frame_info "Map - Frame Info" (G_vacuum) {channel="miio:basic:vacuum:frame_info"}
+String map_extend_data "Map - Map Extend Data" (G_vacuum) {channel="miio:basic:vacuum:map_extend_data"}
+Number mult_map_state "Map - Mult Map State" (G_vacuum) {channel="miio:basic:vacuum:mult_map_state"}
+String mult_map_info "Map - Mult Map Info" (G_vacuum) {channel="miio:basic:vacuum:mult_map_info"}
+Number:Dimensionless volume "Audio - Volume" (G_vacuum) {channel="miio:basic:vacuum:volume"}
+String voice_packet_id "Audio - Voice Packet Id" (G_vacuum) {channel="miio:basic:vacuum:voice_packet_id"}
+String voice_change_state "Audio - Voice Change State" (G_vacuum) {channel="miio:basic:vacuum:voice_change_state"}
+String set_voice "Audio - Set Voice" (G_vacuum) {channel="miio:basic:vacuum:set_voice"}
+String time_zone "Time - Time Zone" (G_vacuum) {channel="miio:basic:vacuum:time_zone"}
+String timer_clean "Time - Timer Clean" (G_vacuum) {channel="miio:basic:vacuum:timer_clean"}
+Number first_clean_time "Clean Logs - First Clean Time" (G_vacuum) {channel="miio:basic:vacuum:first_clean_time"}
+Number:Time total_clean_time "Clean Logs - Total Clean Time" (G_vacuum) {channel="miio:basic:vacuum:total_clean_time"}
+Number total_clean_times "Clean Logs - Total Clean Times" (G_vacuum) {channel="miio:basic:vacuum:total_clean_times"}
+Number total_clean_area "Clean Logs - Total Clean Area" (G_vacuum) {channel="miio:basic:vacuum:total_clean_area"}
 ```
 
 ### HUIZUO ARIES For Bedroom (huayi.light.ari013) item file lines
@@ -5988,6 +6988,83 @@ Dimmer brightness "Light - Brightness" (G_light) {channel="miio:basic:light:brig
 Number:Temperature color_temperature "Light - Color Temperature" (G_light) {channel="miio:basic:light:color-temperature"}
 ```
 
+### IKEA E27 white spectrum opal (ikea.light.led1545g12) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "IKEA E27 white spectrum opal" <status>
+Switch power "Power" (G_light) {channel="miio:lumi:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:lumi:light:brightness"}
+Number colour_temperature "Color Temperature" (G_light) {channel="miio:lumi:light:colour_temperature"}
+```
+
+### IKEA E27 white spectrum clear (ikea.light.led1546g12) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "IKEA E27 white spectrum clear" <status>
+Switch power "Power" (G_light) {channel="miio:lumi:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:lumi:light:brightness"}
+Number colour_temperature "Color Temperature" (G_light) {channel="miio:lumi:light:colour_temperature"}
+```
+
+### IKEA E14 white spectrum (ikea.light.led1536g5) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "IKEA E14 white spectrum" <status>
+Switch power "Power" (G_light) {channel="miio:lumi:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:lumi:light:brightness"}
+Number colour_temperature "Color Temperature" (G_light) {channel="miio:lumi:light:colour_temperature"}
+```
+
+### IKEA GU10 white spectrum (ikea.light.led1537r6) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "IKEA GU10 white spectrum" <status>
+Switch power "Power" (G_light) {channel="miio:lumi:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:lumi:light:brightness"}
+Number colour_temperature "Color Temperature" (G_light) {channel="miio:lumi:light:colour_temperature"}
+```
+
+### IKEA E27 warm white (ikea.light.led1623g12) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "IKEA E27 warm white" <status>
+Switch power "Power" (G_light) {channel="miio:lumi:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:lumi:light:brightness"}
+Number colour_temperature "Color Temperature" (G_light) {channel="miio:lumi:light:colour_temperature"}
+```
+
+### IKEA GU10 warm white (ikea.light.led1650r5) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "IKEA GU10 warm white" <status>
+Switch power "Power" (G_light) {channel="miio:lumi:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:lumi:light:brightness"}
+Number colour_temperature "Color Temperature" (G_light) {channel="miio:lumi:light:colour_temperature"}
+```
+
+### IKEA E14 warm white (ikea.light.led1649c5) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "IKEA E14 warm white" <status>
+Switch power "Power" (G_light) {channel="miio:lumi:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:lumi:light:brightness"}
+Number colour_temperature "Color Temperature" (G_light) {channel="miio:lumi:light:colour_temperature"}
+```
+
 ### Xiaomiyoupin Curtain Controller (Wi-Fi) (lumi.curtain.hagl05) item file lines
 
 note: Autogenerated example. Replace the id (curtain) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
@@ -5995,14 +7072,16 @@ note: Autogenerated example. Replace the id (curtain) in the channel with your o
 ```
 Group G_curtain "Xiaomiyoupin Curtain Controller (Wi-Fi)" <status>
 Number fault "Curtain - Device Fault" (G_curtain) {channel="miio:basic:curtain:fault"}
-Number current_position "Curtain - Current Position" (G_curtain) {channel="miio:basic:curtain:current-position"}
+Number motor_control "Curtain - Motor Control" (G_curtain) {channel="miio:basic:curtain:motor_control"}
+Number:Dimensionless current_position "Curtain - Current Position" (G_curtain) {channel="miio:basic:curtain:current-position"}
 Number status "Curtain - Status" (G_curtain) {channel="miio:basic:curtain:status"}
-Number target_position "Curtain - Target Position" (G_curtain) {channel="miio:basic:curtain:target-position"}
+Number:Dimensionless target_position "Curtain - Target Position" (G_curtain) {channel="miio:basic:curtain:target-position"}
 Number manual_enabled "curtain_cfg - Manual Enabled" (G_curtain) {channel="miio:basic:curtain:manual-enabled"}
-Number polarity "curtain_cfg - Polarity" (G_curtain) {channel="miio:basic:curtain:polarity"}
+Number polarity "Curtain_cfg - Polarity" (G_curtain) {channel="miio:basic:curtain:polarity"}
 Number pos_limit "curtain_cfg - Position Limit" (G_curtain) {channel="miio:basic:curtain:pos-limit"}
-Switch en_night_tip_light "Set Night Tip Light" (G_curtain) {channel="miio:basic:curtain:en-night-tip-light"}
-Number run_time "curtain_cfg - Run-time" (G_curtain) {channel="miio:basic:curtain:run-time"}
+Number en_night_tip_light "Curtain_cfg - En_night_tip_light" (G_curtain) {channel="miio:basic:curtain:en_night_tip_light"}
+Number run_time "Curtain_cfg - Run-time" (G_curtain) {channel="miio:basic:curtain:run-time"}
+Number adjust_value "Motor_controller - Adjust_value" (G_curtain) {channel="miio:basic:curtain:adjust_value"}
 ```
 
 ### Mi Air Purifier virtual (lumi.gateway.mgl03) item file lines
@@ -6011,11 +7090,32 @@ note: Autogenerated example. Replace the id (gateway) in the channel with your o
 
 ```
 Group G_gateway "Mi Air Purifier virtual" <status>
-Switch telnetEnable "Enable Telnet" (G_gateway) {channel="miio:basic:gateway:telnetEnable"}
-Number doorbellVol "Doorbell Volume" (G_gateway) {channel="miio:basic:gateway:doorbellVol"}
-Number gatewayVol "Gateway Volume" (G_gateway) {channel="miio:basic:gateway:gatewayVol"}
-Number alarmingVol "Alarming Volume" (G_gateway) {channel="miio:basic:gateway:alarmingVol"}
-String doorbellPush "Doorbell Push" (G_gateway) {channel="miio:basic:gateway:doorbellPush"}
+Switch telnetEnable "Enable Telnet" (G_gateway) {channel="miio:gateway:gateway:telnetEnable"}
+Number doorbellVol "Doorbell Volume" (G_gateway) {channel="miio:gateway:gateway:doorbellVol"}
+Number gatewayVol "Gateway Volume" (G_gateway) {channel="miio:gateway:gateway:gatewayVol"}
+Number alarmingVol "Alarming Volume" (G_gateway) {channel="miio:gateway:gateway:alarmingVol"}
+String doorbellPush "Doorbell Push" (G_gateway) {channel="miio:gateway:gateway:doorbellPush"}
+```
+
+### Mi smart Home Gateway Hub (lumi.gateway.mieu01) item file lines
+
+note: Autogenerated example. Replace the id (gateway) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_gateway "Mi smart Home Gateway Hub" <status>
+Switch guard "Guard" (G_gateway) {channel="miio:gateway:gateway:guard"}
+Switch corridor "Automatic Night Light" (G_gateway) {channel="miio:gateway:gateway:corridor"}
+Color nightlight "Night Light" (G_gateway) {channel="miio:gateway:gateway:nightlight"}
+Color rgb "Colored Light" (G_gateway) {channel="miio:gateway:gateway:rgb"}
+Number doorbell_volume "Doorbell Volume" (G_gateway) {channel="miio:gateway:gateway:doorbell_volume"}
+Number alarming_volume "Alarming Volume" (G_gateway) {channel="miio:gateway:gateway:alarming_volume"}
+Number gateway_volume "Gateway Volume" (G_gateway) {channel="miio:gateway:gateway:gateway_volume"}
+Number:Time arming_time "Arming Time" (G_gateway) {channel="miio:gateway:gateway:arming_time"}
+Number:Time corridor_on_time "Corridor on time" (G_gateway) {channel="miio:gateway:gateway:corridor_on_time"}
+String language "Voice prompt Language" (G_gateway) {channel="miio:gateway:gateway:language"}
+String zigbee_channel "Zigbee Channel" (G_gateway) {channel="miio:gateway:gateway:zigbee_channel"}
+String lumi_bind "Lumi_bind info" (G_gateway) {channel="miio:gateway:gateway:lumi_bind"}
+String doorbell_push "Doorbell Push" (G_gateway) {channel="miio:gateway:gateway:doorbell_push"}
 ```
 
 ### Mi smart Home Gateway Hub v1 (lumi.gateway.v1) item file lines
@@ -6024,11 +7124,11 @@ note: Autogenerated example. Replace the id (gateway) in the channel with your o
 
 ```
 Group G_gateway "Mi smart Home Gateway Hub v1" <status>
-Switch telnetEnable "Enable Telnet" (G_gateway) {channel="miio:basic:gateway:telnetEnable"}
-Number doorbellVol "Doorbell Volume" (G_gateway) {channel="miio:basic:gateway:doorbellVol"}
-Number gatewayVol "Gateway Volume" (G_gateway) {channel="miio:basic:gateway:gatewayVol"}
-Number alarmingVol "Alarming Volume" (G_gateway) {channel="miio:basic:gateway:alarmingVol"}
-String doorbellPush "Doorbell Push" (G_gateway) {channel="miio:basic:gateway:doorbellPush"}
+Switch telnetEnable "Enable Telnet" (G_gateway) {channel="miio:gateway:gateway:telnetEnable"}
+Number doorbellVol "Doorbell Volume" (G_gateway) {channel="miio:gateway:gateway:doorbellVol"}
+Number gatewayVol "Gateway Volume" (G_gateway) {channel="miio:gateway:gateway:gatewayVol"}
+Number alarmingVol "Alarming Volume" (G_gateway) {channel="miio:gateway:gateway:alarmingVol"}
+String doorbellPush "Doorbell Push" (G_gateway) {channel="miio:gateway:gateway:doorbellPush"}
 ```
 
 ### Mi smart Home GatewayHub v2 (lumi.gateway.v2) item file lines
@@ -6037,24 +7137,147 @@ note: Autogenerated example. Replace the id (gateway) in the channel with your o
 
 ```
 Group G_gateway "Mi smart Home GatewayHub v2" <status>
-Switch telnetEnable "Enable Telnet" (G_gateway) {channel="miio:basic:gateway:telnetEnable"}
-Number doorbellVol "Doorbell Volume" (G_gateway) {channel="miio:basic:gateway:doorbellVol"}
-Number gatewayVol "Gateway Volume" (G_gateway) {channel="miio:basic:gateway:gatewayVol"}
-Number alarmingVol "Alarming Volume" (G_gateway) {channel="miio:basic:gateway:alarmingVol"}
-String doorbellPush "Doorbell Push" (G_gateway) {channel="miio:basic:gateway:doorbellPush"}
+Switch telnetEnable "Enable Telnet" (G_gateway) {channel="miio:gateway:gateway:telnetEnable"}
+Number doorbellVol "Doorbell Volume" (G_gateway) {channel="miio:gateway:gateway:doorbellVol"}
+Number gatewayVol "Gateway Volume" (G_gateway) {channel="miio:gateway:gateway:gatewayVol"}
+Number alarmingVol "Alarming Volume" (G_gateway) {channel="miio:gateway:gateway:alarmingVol"}
+String doorbellPush "Doorbell Push" (G_gateway) {channel="miio:gateway:gateway:doorbellPush"}
 ```
 
-### Mi mart Home Gateway Hub v3 (lumi.gateway.v3) item file lines
+### Mi smart Home Gateway Hub v3 (lumi.gateway.v3) item file lines
 
 note: Autogenerated example. Replace the id (gateway) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_gateway "Mi mart Home Gateway Hub v3" <status>
-Switch telnetEnable "Enable Telnet" (G_gateway) {channel="miio:basic:gateway:telnetEnable"}
-Number doorbellVol "Doorbell Volume" (G_gateway) {channel="miio:basic:gateway:doorbellVol"}
-Number gatewayVol "Gateway Volume" (G_gateway) {channel="miio:basic:gateway:gatewayVol"}
-Number alarmingVol "Alarming Volume" (G_gateway) {channel="miio:basic:gateway:alarmingVol"}
-String doorbellPush "Doorbell Push" (G_gateway) {channel="miio:basic:gateway:doorbellPush"}
+Group G_gateway "Mi smart Home Gateway Hub v3" <status>
+Switch telnetEnable "Enable Telnet" (G_gateway) {channel="miio:gateway:gateway:telnetEnable"}
+Number doorbellVol "Doorbell Volume" (G_gateway) {channel="miio:gateway:gateway:doorbellVol"}
+Number gatewayVol "Gateway Volume" (G_gateway) {channel="miio:gateway:gateway:gatewayVol"}
+Number alarmingVol "Alarming Volume" (G_gateway) {channel="miio:gateway:gateway:alarmingVol"}
+String doorbellPush "Doorbell Push" (G_gateway) {channel="miio:gateway:gateway:doorbellPush"}
+```
+
+### Aqara LED Light Bulb (Tunable White) (lumi.light.aqcn02) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "Aqara LED Light Bulb (Tunable White)" <status>
+Switch power "Power" (G_light) {channel="miio:lumi:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:lumi:light:brightness"}
+Number colour_temperature "Color Temperature" (G_light) {channel="miio:lumi:light:colour_temperature"}
+```
+
+### Door lock (lumi.lock.v1) item file lines
+
+note: Autogenerated example. Replace the id (lock) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_lock "Door lock" <status>
+String status "Status" (G_lock) {channel="miio:lumi:lock:status"}
+String log "Device Log" (G_lock) {channel="miio:lumi:lock:log"}
+```
+
+### Aqara Door Lock (lumi.lock.aq1) item file lines
+
+note: Autogenerated example. Replace the id (lock) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_lock "Aqara Door Lock" <status>
+String status "Status" (G_lock) {channel="miio:lumi:lock:status"}
+String log "Device Log" (G_lock) {channel="miio:lumi:lock:log"}
+```
+
+### Aqara Door Lock S2 (lumi.lock.acn02) item file lines
+
+note: Autogenerated example. Replace the id (lock) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_lock "Aqara Door Lock S2" <status>
+String status "Status" (G_lock) {channel="miio:lumi:lock:status"}
+String log "Device Log" (G_lock) {channel="miio:lumi:lock:log"}
+```
+
+### Aqara Door lock S2 Pro (lumi.lock.acn03) item file lines
+
+note: Autogenerated example. Replace the id (lock) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_lock "Aqara Door lock S2 Pro" <status>
+String status "Status" (G_lock) {channel="miio:lumi:lock:status"}
+String log "Device Log" (G_lock) {channel="miio:lumi:lock:log"}
+```
+
+### Mi Smart Plug (Zigbee) (lumi.plug.mmeu01) item file lines
+
+note: Autogenerated example. Replace the id (plug) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_plug "Mi Smart Plug (Zigbee)" <status>
+Switch power "Power" (G_plug) {channel="miio:lumi:plug:power"}
+Number load_power "Load Power" (G_plug) {channel="miio:lumi:plug:load_power"}
+Switch en_night_tip_light "Led Light" (G_plug) {channel="miio:lumi:plug:en_night_tip_light"}
+Switch poweroff_memory "Poweroff Memory" (G_plug) {channel="miio:lumi:plug:poweroff_memory"}
+Number max_power "Max Power" (G_plug) {channel="miio:lumi:plug:max_power"}
+String log "Device Log" (G_plug) {channel="miio:lumi:plug:log"}
+```
+
+### Mi Window and Door Sensor (lumi.sensor_magnet.v2) item file lines
+
+note: Autogenerated example. Replace the id (sensor_magnet) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_sensor_magnet "Mi Window and Door Sensor" <status>
+String log "Device Log" (G_sensor_magnet) {channel="miio:lumi:sensor_magnet:log"}
+```
+
+### Mi Motion Sensor (lumi.sensor_motion.aq2) item file lines
+
+note: Autogenerated example. Replace the id (sensor_motion) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_sensor_motion "Mi Motion Sensor" <status>
+String log "Device Log" (G_sensor_motion) {channel="miio:lumi:sensor_motion:log"}
+```
+
+### Mi Motion Sensor (lumi.sensor_motion.v2) item file lines
+
+note: Autogenerated example. Replace the id (sensor_motion) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_sensor_motion "Mi Motion Sensor" <status>
+String log "Device Log" (G_sensor_motion) {channel="miio:lumi:sensor_motion:log"}
+```
+
+### Mi Temperature and Humidity Sensor (lumi.sensor_ht.v1) item file lines
+
+note: Autogenerated example. Replace the id (sensor_ht) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_sensor_ht "Mi Temperature and Humidity Sensor" <status>
+Number:Temperature temperature "Temperature" (G_sensor_ht) {channel="miio:lumi:sensor_ht:temperature"}
+Number:Dimensionless humidity "Humidity" (G_sensor_ht) {channel="miio:lumi:sensor_ht:humidity"}
+```
+
+### Water Leak Sensor (lumi.sensor_wleak.aq1) item file lines
+
+note: Autogenerated example. Replace the id (sensor_wleak) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_sensor_wleak "Water Leak Sensor" <status>
+Switch leak "Leaking" (G_sensor_wleak) {channel="miio:lumi:sensor_wleak:leak"}
+String log "Device Log" (G_sensor_wleak) {channel="miio:lumi:sensor_wleak:log"}
+```
+
+### Aqara Temperature and Humidity Sensor (lumi.weather.v1) item file lines
+
+note: Autogenerated example. Replace the id (weather) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_weather "Aqara Temperature and Humidity Sensor" <status>
+Number:Temperature temperature "Temperature" (G_weather) {channel="miio:lumi:weather:temperature"}
+Number:Dimensionless humidity "Humidity" (G_weather) {channel="miio:lumi:weather:humidity"}
+Number:Pressure pressure "pressure" (G_weather) {channel="miio:lumi:weather:pressure"}
 ```
 
 ### Mi Robot Vacuum-Mop Essential (mijia.vacuum.v2) item file lines
@@ -6069,19 +7292,20 @@ Number fault "Robot Cleaner - Device Fault" (G_vacuum) {channel="miio:basic:vacu
 Number mode "Robot Cleaner - Mode" (G_vacuum) {channel="miio:basic:vacuum:mode"}
 Number target_water_level "Robot Cleaner - Target Water Level" (G_vacuum) {channel="miio:basic:vacuum:target-water-level"}
 Number fan_level "Robot Cleaner - Fan Level" (G_vacuum) {channel="miio:basic:vacuum:fan-level"}
-Number battery_level "Battery - Battery Level" (G_vacuum) {channel="miio:basic:vacuum:battery-level"}
+Number:Dimensionless battery_level "Battery - Battery Level" (G_vacuum) {channel="miio:basic:vacuum:battery-level"}
 Number charging_state "Battery - Charging State" (G_vacuum) {channel="miio:basic:vacuum:charging-state"}
 Switch alarm "Alarm - Alarm" (G_vacuum) {channel="miio:basic:vacuum:alarm"}
-Number volume "Alarm - Volume" (G_vacuum) {channel="miio:basic:vacuum:volume"}
-Number filter_life_level "Filter - Filter Life Level" (G_vacuum) {channel="miio:basic:vacuum:filter-life-level"}
-Number filter_left_time "Filter - Filter Left Time" (G_vacuum) {channel="miio:basic:vacuum:filter-left-time"}
-Number brush_life_level "Brush Cleaner - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush-life-level"}
-Number brush_left_time "Brush Cleaner - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush-left-time"}
-Number brush_life_level1 "Brush Cleaner - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush-life-level1"}
-Number brush_left_time1 "Brush Cleaner - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush-left-time1"}
+Number:Dimensionless volume "Alarm - Volume" (G_vacuum) {channel="miio:basic:vacuum:volume"}
+Number:Dimensionless filter_life_level "Filter - Filter Life Level" (G_vacuum) {channel="miio:basic:vacuum:filter_life_level"}
+Number:Time filter_left_time "Filter - Filter Left Time" (G_vacuum) {channel="miio:basic:vacuum:filter-left-time"}
+Number:Dimensionless brush_life_level "Brush Cleaner - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush-life-level"}
+Number:Time brush_left_time "Brush Cleaner - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush-left-time"}
+Number:Dimensionless brush_life_level1 "Brush Cleaner - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush-life-level1"}
+Number:Time brush_left_time1 "Brush Cleaner - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush-left-time1"}
+Number direction_key "Remote Control - Direction Key" (G_vacuum) {channel="miio:basic:vacuum:direction_key"}
 Number:Area clean_area "Clean Record - Clean Area" (G_vacuum) {channel="miio:basic:vacuum:clean-area"}
-Number:Time clean_time "Clean Record - Clean Time" (G_vacuum) {channel="miio:basic:vacuum:clean-time"}
-Number total_clean_area "Clean Record - Total Clean Area" (G_vacuum) {channel="miio:basic:vacuum:total-clean-area"}
+Number clean_time "Clean Record - Clean Time" (G_vacuum) {channel="miio:basic:vacuum:clean_time"}
+Number:Area total_clean_area "Clean Record - Total Clean Area" (G_vacuum) {channel="miio:basic:vacuum:total-clean-area"}
 Number total_clean_time "Clean Record - Total Clean Time" (G_vacuum) {channel="miio:basic:vacuum:total-clean-time"}
 Number total_clean_count "Clean Record - Total Clean Count" (G_vacuum) {channel="miio:basic:vacuum:total-clean-count"}
 Number language "Language - Language" (G_vacuum) {channel="miio:basic:vacuum:language"}
@@ -6284,12 +7508,12 @@ Switch switchscene "Switch Scene" (G_light) {channel="miio:basic:light:switchsce
 Switch delayoff "Delay Off" (G_light) {channel="miio:basic:light:delayoff"}
 ```
 
-### Philips ZhiRui E14 candle lamp Frosted version (philips.light.candle) item file lines
+### Philips ZhiRui E14 Candle Lamp Frosted version (philips.light.candle) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips ZhiRui E14 candle lamp Frosted version" <status>
+Group G_light "Philips ZhiRui E14 Candle Lamp Frosted version" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6298,12 +7522,12 @@ Switch delayoff "Delay Off" (G_light) {channel="miio:basic:light:delayoff"}
 Switch toggle "Toggle" (G_light) {channel="miio:basic:light:toggle"}
 ```
 
-### Philips ZhiRui E14 candle lamp crystal version (philips.light.candle2) item file lines
+### Philips ZhiRui E14 Candle Lamp Crystal version (philips.light.candle2) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips ZhiRui E14 candle lamp crystal version" <status>
+Group G_light "Philips ZhiRui E14 Candle Lamp Crystal version" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6344,12 +7568,12 @@ Switch switch_en "Switch Enabled" (G_light) {channel="miio:basic:light:switch_en
 Switch delayoff "Delay Off" (G_light) {channel="miio:basic:light:delayoff"}
 ```
 
-### Philips connected ceiling (philips.light.ceiling) item file lines
+### Philips Connected Ceiling (philips.light.ceiling) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips connected ceiling" <status>
+Group G_light "Philips Connected Ceiling" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6374,12 +7598,12 @@ Switch switch_en "Switch Enabled" (G_light) {channel="miio:basic:light:switch_en
 Switch delayoff "Delay Off" (G_light) {channel="miio:basic:light:delayoff"}
 ```
 
-### ZhiRui dimmable downlight (philips.light.dlight) item file lines
+### ZhiRui Dimmable Downlight (philips.light.dlight) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "ZhiRui dimmable downlight" <status>
+Group G_light "ZhiRui Dimmable Downlight" <status>
 Switch on "Power" (G_light) {channel="miio:basic:light:on"}
 Number mode "Mode" (G_light) {channel="miio:basic:light:mode"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
@@ -6390,14 +7614,15 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
-### Philips ZhiRui downlight (philips.light.downlight) item file lines
+### Philips ZhiRui Downlight (philips.light.downlight) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips ZhiRui downlight" <status>
+Group G_light "Philips ZhiRui Downlight" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6422,12 +7647,12 @@ Switch switchscene "Switch Scene" (G_light) {channel="miio:basic:light:switchsce
 Switch delayoff "Delay Off" (G_light) {channel="miio:basic:light:delayoff"}
 ```
 
-### Philips ZhiYi Ceiling lamp FL 40W (philips.light.lnblight1) item file lines
+### Philips ZhiYi Ceiling Lamp FL 40W (philips.light.lnblight1) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips ZhiYi Ceiling lamp FL 40W" <status>
+Group G_light "Philips ZhiYi Ceiling Lamp FL 40W" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6441,12 +7666,12 @@ Switch delayoff "Delay Off" (G_light) {channel="miio:basic:light:delayoff"}
 Switch mb "MiBand" (G_light) {channel="miio:basic:light:mb"}
 ```
 
-### Philips ZhiYi Ceiling lamp FL 28W (philips.light.lnblight2) item file lines
+### Philips ZhiYi Ceiling Lamp FL 28W (philips.light.lnblight2) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips ZhiYi Ceiling lamp FL 28W" <status>
+Group G_light "Philips ZhiYi Ceiling Lamp FL 28W" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6460,12 +7685,12 @@ Switch delayoff "Delay Off" (G_light) {channel="miio:basic:light:delayoff"}
 Switch mb "MiBand" (G_light) {channel="miio:basic:light:mb"}
 ```
 
-### Philips ZhiYi Ceiling lamp FL 80W (philips.light.lnlrlight) item file lines
+### Philips ZhiYi Ceiling Lamp FL 80W (philips.light.lnlrlight) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips ZhiYi Ceiling lamp FL 80W" <status>
+Group G_light "Philips ZhiYi Ceiling Lamp FL 80W" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6514,6 +7739,7 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
 ### Zhirui Ceiling Lamp Nordic 40W (philips.light.mceilm) item file lines
@@ -6532,6 +7758,7 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
 ### Zhirui Ceiling Lamp Nordic 28W (philips.light.mceils) item file lines
@@ -6550,6 +7777,7 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
 ### Philips Smart Lamp (philips.light.mono1) item file lines
@@ -6563,12 +7791,12 @@ Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number scene "Scene" (G_light) {channel="miio:basic:light:scene"}
 ```
 
-### Philips ZhiRui bedside lamp (philips.light.moonlight) item file lines
+### Philips ZhiRui Bedside Lamp (philips.light.moonlight) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips ZhiRui bedside lamp" <status>
+Group G_light "Philips ZhiRui Bedside Lamp" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6595,14 +7823,15 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
-###  Zhirui Ceiling Lamp Black 40W (philips.light.obceim) item file lines
+### Zhirui Ceiling Lamp Black 40W (philips.light.obceim) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light " Zhirui Ceiling Lamp Black 40W" <status>
+Group G_light "Zhirui Ceiling Lamp Black 40W" <status>
 Switch on "Power" (G_light) {channel="miio:basic:light:on"}
 Number mode "Mode" (G_light) {channel="miio:basic:light:mode"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
@@ -6613,6 +7842,7 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
 ### Zhirui Ceiling Lamp Black 28W (philips.light.obceis) item file lines
@@ -6631,6 +7861,7 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
 ### Mijia Philips Study Desk Lamp (philips.light.rwread) item file lines
@@ -6662,6 +7893,7 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
 ### Zhirui Ceiling Lamp Starry 40W (philips.light.sceilm) item file lines
@@ -6680,6 +7912,7 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
 ### Zhirui Ceiling Lamp Starry 28W (philips.light.sceils) item file lines
@@ -6698,14 +7931,15 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
-### Philips EyeCare connected desk lamp gen2. (philips.light.sread1) item file lines
+### Philips EyeCare Connected Desk Lamp gen2. (philips.light.sread1) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips EyeCare connected desk lamp gen2." <status>
+Group G_light "Philips EyeCare Connected Desk Lamp gen2." <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Switch ambientPower "Ambient Power" (G_light) {channel="miio:basic:light:ambientPower"}
@@ -6730,12 +7964,12 @@ Switch eyecare "Eyecare" (G_light) {channel="miio:basic:light:eyecare"}
 Switch bl "Night Light" (G_light) {channel="miio:basic:light:bl"}
 ```
 
-### Philips connected lights (philips.light.virtual) item file lines
+### Philips Connected Lights (philips.light.virtual) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips connected lights" <status>
+Group G_light "Philips Connected Lights" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6761,6 +7995,7 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
 ### Zhirui Ceiling Lamp Gorgeous 40W (philips.light.xzceim) item file lines
@@ -6779,6 +8014,7 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
 ### Zhirui Ceiling Lamp Gorgeous 28W (philips.light.xzceis) item file lines
@@ -6797,14 +8033,15 @@ String WallScene "Wall Scene" (G_light) {channel="miio:basic:light:WallScene"}
 String autoCct "Auto CCT" (G_light) {channel="miio:basic:light:autoCct"}
 Number dimmingPeriod "Dimming Period" (G_light) {channel="miio:basic:light:dimmingPeriod"}
 String MibandStatus "Mi Band Status" (G_light) {channel="miio:basic:light:MibandStatus"}
+String actions "Actions" (G_light) {channel="miio:basic:light:actions"}
 ```
 
-### Philips ZhiYi ceiling lamp (philips.light.zyceiling) item file lines
+### Philips ZhiYi Ceiling lamp (philips.light.zyceiling) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips ZhiYi ceiling lamp" <status>
+Group G_light "Philips ZhiYi Ceiling lamp" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6813,12 +8050,12 @@ Switch switchscene "Switch Scene" (G_light) {channel="miio:basic:light:switchsce
 Switch toggle "Toggle" (G_light) {channel="miio:basic:light:toggle"}
 ```
 
-### Philips ZhiYi desk lamp (philips.light.zysread) item file lines
+### Philips ZhiYi Desk Lamp (philips.light.zysread) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips ZhiYi desk lamp" <status>
+Group G_light "Philips ZhiYi Desk Lamp" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6828,12 +8065,12 @@ Switch switchscene "Switch Scene" (G_light) {channel="miio:basic:light:switchsce
 Switch delayoff "Delay Off" (G_light) {channel="miio:basic:light:delayoff"}
 ```
 
-### Philips ZhiYi strip (philips.light.zystrip) item file lines
+### Philips ZhiYi Strip (philips.light.zystrip) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Philips ZhiYi strip" <status>
+Group G_light "Philips ZhiYi Strip" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Dimmer cct "Correlated Color Temperature" (G_light) {channel="miio:basic:light:cct"}
@@ -6850,14 +8087,71 @@ note: Autogenerated example. Replace the id (powerstrip) in the channel with you
 ```
 Group G_powerstrip "CHINGMI Smart Power Strip v1" <status>
 Switch power "Power" (G_powerstrip) {channel="miio:basic:powerstrip:power"}
-Number powerUsage "Power Consumption" (G_powerstrip) {channel="miio:basic:powerstrip:powerUsage"}
+String mode "Mode" (G_powerstrip) {channel="miio:basic:powerstrip:mode"}
+Number:Power powerUsage "Power Consumption" (G_powerstrip) {channel="miio:basic:powerstrip:powerUsage"}
+Number:ElectricPotential voltage "Voltage" (G_powerstrip) {channel="miio:basic:powerstrip:voltage"}
 Switch led "wifi LED" (G_powerstrip) {channel="miio:basic:powerstrip:led"}
-Number power_price "power_price" (G_powerstrip) {channel="miio:basic:powerstrip:power_price"}
-Number current "Current" (G_powerstrip) {channel="miio:basic:powerstrip:current"}
+Number power_price "Power Price" (G_powerstrip) {channel="miio:basic:powerstrip:power_price"}
+Number power_factor "Power Factor" (G_powerstrip) {channel="miio:basic:powerstrip:power_factor"}
+Number:ElectricCurrent current "Current" (G_powerstrip) {channel="miio:basic:powerstrip:current"}
+Number:ElectricCurrent elec_leakage "Electic Leakage" (G_powerstrip) {channel="miio:basic:powerstrip:elec_leakage"}
 Number:Temperature temperature "Temperature" (G_powerstrip) {channel="miio:basic:powerstrip:temperature"}
-Number lp_autooff "Low Power Auto Off" (G_powerstrip) {channel="miio:basic:powerstrip:lp_autooff"}
-Number lp_autooff_delay "Low Power Limit Time" (G_powerstrip) {channel="miio:basic:powerstrip:lp_autooff_delay"}
-Number lp_threshold "Low Power Threshold" (G_powerstrip) {channel="miio:basic:powerstrip:lp_threshold"}
+```
+
+### ROIDMI EVE vacuum (roidmi.vacuum.v60) item file lines
+
+note: Autogenerated example. Replace the id (vacuum) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_vacuum "ROIDMI EVE vacuum" <status>
+String actions "Actions" (G_vacuum) {channel="miio:basic:vacuum:actions"}
+Number status "Robot Cleaner - Status" (G_vacuum) {channel="miio:basic:vacuum:status"}
+Number fault "Robot Cleaner - Device Fault" (G_vacuum) {channel="miio:basic:vacuum:fault"}
+Number mode "Robot Cleaner - Mode" (G_vacuum) {channel="miio:basic:vacuum:mode"}
+Number sweep_type "Robot Cleaner - Sweep Type" (G_vacuum) {channel="miio:basic:vacuum:sweep_type"}
+Number on "Robot Cleaner - Switch Status" (G_vacuum) {channel="miio:basic:vacuum:on"}
+Number:Dimensionless battery_level "Battery - Battery Level" (G_vacuum) {channel="miio:basic:vacuum:battery_level"}
+Number charging_state "Battery - Charging State" (G_vacuum) {channel="miio:basic:vacuum:charging_state"}
+Number:Dimensionless volume "Speaker - Volume" (G_vacuum) {channel="miio:basic:vacuum:volume"}
+Switch mute "Speaker - Mute" (G_vacuum) {channel="miio:basic:vacuum:mute"}
+Number:Dimensionless filter_life_level "Filter - Filter Life Level" (G_vacuum) {channel="miio:basic:vacuum:filter_life_level"}
+Number:Time filter_left_time "Filter - Filter Left Time" (G_vacuum) {channel="miio:basic:vacuum:filter_left_time"}
+Number:Time brush_left_time "Brush Cleaner - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush_left_time"}
+Number:Dimensionless brush_life_level "Brush Cleaner - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush_life_level"}
+Number:Time brush_left_time1 "Brush Cleaner - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush_left_time1"}
+Number:Dimensionless brush_life_level1 "Brush Cleaner - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush_life_level1"}
+Number:Time brush_left_time2 "Brush Cleaner - Brush Left Time" (G_vacuum) {channel="miio:basic:vacuum:brush_left_time2"}
+Number:Dimensionless brush_life_level2 "Brush Cleaner - Brush Life Level" (G_vacuum) {channel="miio:basic:vacuum:brush_life_level2"}
+Switch mop "Custom - Mop" (G_vacuum) {channel="miio:basic:vacuum:mop"}
+Number work_station_freq "Custom - Work Station Freq" (G_vacuum) {channel="miio:basic:vacuum:work_station_freq"}
+String timing "Custom - Timing" (G_vacuum) {channel="miio:basic:vacuum:timing"}
+Number clean_area "Custom - Clean Area" (G_vacuum) {channel="miio:basic:vacuum:clean_area"}
+String uid "Custom - Uid" (G_vacuum) {channel="miio:basic:vacuum:uid"}
+Switch auto_boost "Custom - Auto Boost" (G_vacuum) {channel="miio:basic:vacuum:auto_boost"}
+String forbid_mode "Custom - Forbid Mode" (G_vacuum) {channel="miio:basic:vacuum:forbid_mode"}
+Number water_level "Custom - Water Level" (G_vacuum) {channel="miio:basic:vacuum:water_level"}
+Number:Time total_clean_time "Custom - Total Clean Time" (G_vacuum) {channel="miio:basic:vacuum:total_clean_time"}
+Number total_clean_areas "Custom - Total Clean Areas" (G_vacuum) {channel="miio:basic:vacuum:total_clean_areas"}
+Number clean_counts "Custom - Clean Counts" (G_vacuum) {channel="miio:basic:vacuum:clean_counts"}
+Number:Time clean_time "Custom - Clean Time" (G_vacuum) {channel="miio:basic:vacuum:clean_time"}
+Switch double_clean "Custom - Double Clean" (G_vacuum) {channel="miio:basic:vacuum:double_clean"}
+Switch edge_sweep "Custom - Edge Sweep" (G_vacuum) {channel="miio:basic:vacuum:edge_sweep"}
+Switch led_switch "Custom - Led Switch" (G_vacuum) {channel="miio:basic:vacuum:led_switch"}
+Switch lidar_collision "Custom - Lidar Collision" (G_vacuum) {channel="miio:basic:vacuum:lidar_collision"}
+Switch station_key "Custom - Station Key" (G_vacuum) {channel="miio:basic:vacuum:station_key"}
+Switch station_led "Custom - Station Led" (G_vacuum) {channel="miio:basic:vacuum:station_led"}
+String current_audio "Custom - Current Audio" (G_vacuum) {channel="miio:basic:vacuum:current_audio"}
+String progress "Custom - Progress" (G_vacuum) {channel="miio:basic:vacuum:progress"}
+Number station_type "Custom - Station Type" (G_vacuum) {channel="miio:basic:vacuum:station_type"}
+String voice_conf "Custom - Voice Conf" (G_vacuum) {channel="miio:basic:vacuum:voice_conf"}
+String clean_path "Map - Clean Path" (G_vacuum) {channel="miio:basic:vacuum:clean_path"}
+String restricted_zone "Map - Restricted Zone" (G_vacuum) {channel="miio:basic:vacuum:restricted_zone"}
+String auto_area "Map - Auto Area" (G_vacuum) {channel="miio:basic:vacuum:auto_area"}
+Switch map_memory "Map - Map Memory" (G_vacuum) {channel="miio:basic:vacuum:map_memory"}
+String map_name "Map - Map Name" (G_vacuum) {channel="miio:basic:vacuum:map_name"}
+Switch use_auto_area "Map - Use Auto Area" (G_vacuum) {channel="miio:basic:vacuum:use_auto_area"}
+Number path_type "Map - Path Type" (G_vacuum) {channel="miio:basic:vacuum:path_type"}
+Number sweep_mode "Sweep - Sweep Mode" (G_vacuum) {channel="miio:basic:vacuum:sweep_mode"}
 ```
 
 ### PTX OneKey Switch (WIFI) (090615.switch.xswitch01) item file lines
@@ -6909,12 +8203,12 @@ Number expresso "Brew Americano" (G_coffee) {channel="miio:basic:coffee:expresso
 Number boil "Boil water" (G_coffee) {channel="miio:basic:coffee:boil"}
 ```
 
-### Xiaomi Scishare smart capsule coffee machine (scishare.coffee.s1301) item file lines
+### Xiaomi Scishare Smart Capsule Coffee Machine (scishare.coffee.s1301) item file lines
 
 note: Autogenerated example. Replace the id (coffee) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_coffee "Xiaomi Scishare smart capsule coffee machine" <status>
+Group G_coffee "Xiaomi Scishare Smart Capsule Coffee Machine" <status>
 Switch power "Power" (G_coffee) {channel="miio:basic:coffee:power"}
 String Status "status" (G_coffee) {channel="miio:basic:coffee:Status"}
 Number expresso "Brew Expresso" (G_coffee) {channel="miio:basic:coffee:expresso"}
@@ -6930,11 +8224,12 @@ note: Autogenerated example. Replace the id (vacuum) in the channel with your ow
 Group G_vacuum "Viomi Cleaning Robot V-RVCLM21B" <status>
 Number vacuumaction "Vacuum Action" (G_vacuum) {channel="miio:basic:vacuum:vacuumaction"}
 Number state "State" (G_vacuum) {channel="miio:basic:vacuum:state"}
-Number mode "Mode" (G_vacuum) {channel="miio:basic:vacuum:mode"}
+Number mode "Clean Mode" (G_vacuum) {channel="miio:basic:vacuum:mode"}
 Number err_state "Error" (G_vacuum) {channel="miio:basic:vacuum:err_state"}
 Number battery_life "Battery" (G_vacuum) {channel="miio:basic:vacuum:battery_life"}
 Number box_type "Box type" (G_vacuum) {channel="miio:basic:vacuum:box_type"}
 Number mop_type "mop_type" (G_vacuum) {channel="miio:basic:vacuum:mop_type"}
+Number mop_route "Mop Route" (G_vacuum) {channel="miio:basic:vacuum:mop_route"}
 Number s_time "Clean time" (G_vacuum) {channel="miio:basic:vacuum:s_time"}
 Number s_area "Clean Area" (G_vacuum) {channel="miio:basic:vacuum:s_area"}
 Number suction_grade "suction_grade" (G_vacuum) {channel="miio:basic:vacuum:suction_grade"}
@@ -6953,11 +8248,12 @@ note: Autogenerated example. Replace the id (vacuum) in the channel with your ow
 Group G_vacuum "Mi Robot Vacuum-Mop P" <status>
 Number vacuumaction "Vacuum Action" (G_vacuum) {channel="miio:basic:vacuum:vacuumaction"}
 Number state "State" (G_vacuum) {channel="miio:basic:vacuum:state"}
-Number mode "Mode" (G_vacuum) {channel="miio:basic:vacuum:mode"}
+Number mode "Clean Mode" (G_vacuum) {channel="miio:basic:vacuum:mode"}
 Number err_state "Error" (G_vacuum) {channel="miio:basic:vacuum:err_state"}
 Number battery_life "Battery" (G_vacuum) {channel="miio:basic:vacuum:battery_life"}
 Number box_type "Box type" (G_vacuum) {channel="miio:basic:vacuum:box_type"}
 Number mop_type "mop_type" (G_vacuum) {channel="miio:basic:vacuum:mop_type"}
+Number mop_route "Mop Route" (G_vacuum) {channel="miio:basic:vacuum:mop_route"}
 Number s_time "Clean time" (G_vacuum) {channel="miio:basic:vacuum:s_time"}
 Number s_area "Clean Area" (G_vacuum) {channel="miio:basic:vacuum:s_area"}
 Number suction_grade "suction_grade" (G_vacuum) {channel="miio:basic:vacuum:suction_grade"}
@@ -6976,11 +8272,12 @@ note: Autogenerated example. Replace the id (vacuum) in the channel with your ow
 Group G_vacuum "Mi Robot Vacuum-Mop P" <status>
 Number vacuumaction "Vacuum Action" (G_vacuum) {channel="miio:basic:vacuum:vacuumaction"}
 Number state "State" (G_vacuum) {channel="miio:basic:vacuum:state"}
-Number mode "Mode" (G_vacuum) {channel="miio:basic:vacuum:mode"}
+Number mode "Clean Mode" (G_vacuum) {channel="miio:basic:vacuum:mode"}
 Number err_state "Error" (G_vacuum) {channel="miio:basic:vacuum:err_state"}
 Number battery_life "Battery" (G_vacuum) {channel="miio:basic:vacuum:battery_life"}
 Number box_type "Box type" (G_vacuum) {channel="miio:basic:vacuum:box_type"}
 Number mop_type "mop_type" (G_vacuum) {channel="miio:basic:vacuum:mop_type"}
+Number mop_route "Mop Route" (G_vacuum) {channel="miio:basic:vacuum:mop_route"}
 Number s_time "Clean time" (G_vacuum) {channel="miio:basic:vacuum:s_time"}
 Number s_area "Clean Area" (G_vacuum) {channel="miio:basic:vacuum:s_area"}
 Number suction_grade "suction_grade" (G_vacuum) {channel="miio:basic:vacuum:suction_grade"}
@@ -7059,12 +8356,12 @@ Number download_status "Voice - Download Status" (G_vacuum) {channel="miio:basic
 Number:Dimensionless download_progress "Voice - Download Progress" (G_vacuum) {channel="miio:basic:vacuum:download-progress"}
 ```
 
-### VIOMI Internet electric water heater 1A (60L) (viomi.waterheater.e1) item file lines
+### VIOMI Internet Electric Water Heater 1A (60L) (viomi.waterheater.e1) item file lines
 
 note: Autogenerated example. Replace the id (waterheater) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_waterheater "VIOMI Internet electric water heater 1A (60L)" <status>
+Group G_waterheater "VIOMI Internet Electric Water Heater 1A (60L)" <status>
 Number washStatus "Wash Status" (G_waterheater) {channel="miio:basic:waterheater:washStatus"}
 Number velocity "Velocity" (G_waterheater) {channel="miio:basic:waterheater:velocity"}
 Number:Temperature waterTemp "Water Temperature" (G_waterheater) {channel="miio:basic:waterheater:waterTemp"}
@@ -7750,12 +9047,12 @@ Number:Temperature fan_temp "Fan Temperature" (G_toilet) {channel="miio:basic:to
 Number status_led "Night Light" (G_toilet) {channel="miio:basic:toilet:status_led"}
 ```
 
-### Uclean smart toilet pure (xjx.toilet.pure) item file lines
+### Uclean Smart Toilet pure (xjx.toilet.pure) item file lines
 
 note: Autogenerated example. Replace the id (toilet) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_toilet "Uclean smart toilet pure" <status>
+Group G_toilet "Uclean Smart Toilet pure" <status>
 Number:Temperature seat_temp "Seat Temperature" (G_toilet) {channel="miio:basic:toilet:seat_temp"}
 Number status_seatheat "Seat Status" (G_toilet) {channel="miio:basic:toilet:status_seatheat"}
 Number:Temperature water_temp_t "Water Temperature" (G_toilet) {channel="miio:basic:toilet:water_temp_t"}
@@ -7763,12 +9060,12 @@ Number:Temperature fan_temp "Fan Temperature" (G_toilet) {channel="miio:basic:to
 Number status_led "Night Light" (G_toilet) {channel="miio:basic:toilet:status_led"}
 ```
 
-### Uclean smart toilet relax (xjx.toilet.relax) item file lines
+### Uclean Smart Toilet relax (xjx.toilet.relax) item file lines
 
 note: Autogenerated example. Replace the id (toilet) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_toilet "Uclean smart toilet relax" <status>
+Group G_toilet "Uclean Smart Toilet relax" <status>
 Number:Temperature seat_temp "Seat Temperature" (G_toilet) {channel="miio:basic:toilet:seat_temp"}
 Number status_seatheat "Seat Status" (G_toilet) {channel="miio:basic:toilet:status_seatheat"}
 Number:Temperature water_temp_t "Water Temperature" (G_toilet) {channel="miio:basic:toilet:water_temp_t"}
@@ -7827,8 +9124,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -7842,8 +9140,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -7857,8 +9156,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -8080,12 +9380,12 @@ String customScene "Set Scene" (G_light) {channel="miio:basic:light:customScene"
 Number nightlightBrightness "Nightlight Brightness" (G_light) {channel="miio:basic:light:nightlightBrightness"}
 ```
 
-### Yeelight stylized Ceiling Light  Pro (yeelink.light.ceiling12) item file lines
+### Yeelight Stylized Ceiling Light  Pro (yeelink.light.ceiling12) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
 
 ```
-Group G_light "Yeelight stylized Ceiling Light  Pro" <status>
+Group G_light "Yeelight Stylized Ceiling Light  Pro" <status>
 Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
@@ -8304,6 +9604,22 @@ String customScene "Set Scene" (G_light) {channel="miio:basic:light:customScene"
 Number nightlightBrightness "Nightlight Brightness" (G_light) {channel="miio:basic:light:nightlightBrightness"}
 ```
 
+### Yeelight Jade Smart LED Ceiling Light C2001 (yeelink.light.ceil26) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "Yeelight Jade Smart LED Ceiling Light C2001" <status>
+Switch power "Power" (G_light) {channel="miio:basic:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
+Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
+Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+String name "Name" (G_light) {channel="miio:basic:light:name"}
+String customScene "Set Scene" (G_light) {channel="miio:basic:light:customScene"}
+Number nightlightBrightness "Nightlight Brightness" (G_light) {channel="miio:basic:light:nightlightBrightness"}
+```
+
 ### Yeelight Color Bulb (yeelink.light.color1) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
@@ -8314,8 +9630,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -8329,8 +9646,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -8344,8 +9662,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -8359,8 +9678,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -8374,8 +9694,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -8389,8 +9710,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -8623,6 +9945,48 @@ Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
+### Mi Smart LED Bulb (yeelink.light.mono6) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "Mi Smart LED Bulb" <status>
+Switch power "Power" (G_light) {channel="miio:basic:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
+Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
+Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+String name "Name" (G_light) {channel="miio:basic:light:name"}
+```
+
+### Yeelight LED smart bulb W3(dimmable) (yeelink.light.monoa) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "Yeelight LED smart bulb W3(dimmable)" <status>
+Switch power "Power" (G_light) {channel="miio:basic:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
+Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
+Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+String name "Name" (G_light) {channel="miio:basic:light:name"}
+```
+
+### Yeelight GU10 Smart Bulb W1(dimmable) (yeelink.light.monob) item file lines
+
+note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_light "Yeelight GU10 Smart Bulb W1(dimmable)" <status>
+Switch power "Power" (G_light) {channel="miio:basic:light:power"}
+Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
+Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
+Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+String name "Name" (G_light) {channel="miio:basic:light:name"}
+```
+
 ### Yeelight Whiteglow Panel Light (yeelink.light.panel1) item file lines
 
 note: Autogenerated example. Replace the id (light) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
@@ -8649,8 +10013,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -8664,8 +10029,9 @@ Switch power "Power" (G_light) {channel="miio:basic:light:power"}
 Dimmer brightness "Brightness" (G_light) {channel="miio:basic:light:brightness"}
 Number:Time delayoff "Shutdown Timer" (G_light) {channel="miio:basic:light:delayoff"}
 Number colorTemperature "Color Temperature" (G_light) {channel="miio:basic:light:colorTemperature"}
-Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
 Color rgbColor "RGB Color" (G_light) {channel="miio:basic:light:rgbColor"}
+Number colorMode "Color Mode" (G_light) {channel="miio:basic:light:colorMode"}
+Switch colorflow "Color Flow" (G_light) {channel="miio:basic:light:colorflow"}
 String name "Name" (G_light) {channel="miio:basic:light:name"}
 ```
 
@@ -9270,6 +10636,71 @@ Number tds_out_avg "Average TDS out" (G_waterpurifier) {channel="miio:basic:wate
 Number lightMode "Light Mode" (G_waterpurifier) {channel="miio:basic:waterpurifier:lightMode"}
 ```
 
+### Smartmi Ventilation System (zhimi.airfresh.va2) item file lines
+
+note: Autogenerated example. Replace the id (airfresh) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_airfresh "Smartmi Ventilation System" <status>
+Switch power "Power" (G_airfresh) {channel="miio:basic:airfresh:power"}
+Switch heater "Heater" (G_airfresh) {channel="miio:basic:airfresh:heater"}
+String mode "Mode" (G_airfresh) {channel="miio:basic:airfresh:mode"}
+Number:Dimensionless humidity "Humidity" (G_airfresh) {channel="miio:basic:airfresh:humidity"}
+Number:Dimensionless co2 "CO2" (G_airfresh) {channel="miio:basic:airfresh:co2"}
+Switch childLock "Child Lock" (G_airfresh) {channel="miio:basic:airfresh:childLock"}
+Switch buzzer "Buzzer" (G_airfresh) {channel="miio:basic:airfresh:buzzer"}
+Number aqi "Air Quality Index" (G_airfresh) {channel="miio:basic:airfresh:aqi"}
+Number averageaqi "Average Air Quality Index" (G_airfresh) {channel="miio:basic:airfresh:averageaqi"}
+Number:Time filterhours "Filter Hours used" (G_airfresh) {channel="miio:basic:airfresh:filterhours"}
+Number:Time usedhours "Run Time" (G_airfresh) {channel="miio:basic:airfresh:usedhours"}
+Number motorspeed "Motor Speed" (G_airfresh) {channel="miio:basic:airfresh:motorspeed"}
+Number led_level "Led - Brightness" (G_airfresh) {channel="miio:basic:airfresh:led_level"}
+Number:Temperature temperature "Temperature" (G_airfresh) {channel="miio:basic:airfresh:temperature"}
+```
+
+### Smartmi Fresh Air System (Heating) (zhimi.airfresh.va4) item file lines
+
+note: Autogenerated example. Replace the id (airfresh) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_airfresh "Smartmi Fresh Air System (Heating)" <status>
+Switch power "Power" (G_airfresh) {channel="miio:basic:airfresh:power"}
+Switch heater "Heater" (G_airfresh) {channel="miio:basic:airfresh:heater"}
+String mode "Mode" (G_airfresh) {channel="miio:basic:airfresh:mode"}
+Number:Dimensionless humidity "Humidity" (G_airfresh) {channel="miio:basic:airfresh:humidity"}
+Number:Dimensionless co2 "CO2" (G_airfresh) {channel="miio:basic:airfresh:co2"}
+Switch childLock "Child Lock" (G_airfresh) {channel="miio:basic:airfresh:childLock"}
+Switch buzzer "Buzzer" (G_airfresh) {channel="miio:basic:airfresh:buzzer"}
+Number aqi "Air Quality Index" (G_airfresh) {channel="miio:basic:airfresh:aqi"}
+Number averageaqi "Average Air Quality Index" (G_airfresh) {channel="miio:basic:airfresh:averageaqi"}
+Number:Time filterhours "Filter Hours used" (G_airfresh) {channel="miio:basic:airfresh:filterhours"}
+Number:Time usedhours "Run Time" (G_airfresh) {channel="miio:basic:airfresh:usedhours"}
+Number motorspeed "Motor Speed" (G_airfresh) {channel="miio:basic:airfresh:motorspeed"}
+Number led_level "Led - Brightness" (G_airfresh) {channel="miio:basic:airfresh:led_level"}
+Number:Temperature temperature "Temperature" (G_airfresh) {channel="miio:basic:airfresh:temperature"}
+```
+
+### Mi Fresh Air Ventilator C1-80 (zhimi.airfresh.ua1) item file lines
+
+note: Autogenerated example. Replace the id (airfresh) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_airfresh "Mi Fresh Air Ventilator C1-80" <status>
+String actions "Actions" (G_airfresh) {channel="miio:basic:airfresh:actions"}
+Switch on "Air Fresh - Switch Status" (G_airfresh) {channel="miio:basic:airfresh:on"}
+Number fault "Device Fault" (G_airfresh) {channel="miio:basic:airfresh:fault"}
+Number fan_level "Air Fresh - Fan Level" (G_airfresh) {channel="miio:basic:airfresh:fan_level"}
+Switch heater "Heater" (G_airfresh) {channel="miio:basic:airfresh:heater"}
+Number:Time filter_used_time "Filter - Filter Used Time" (G_airfresh) {channel="miio:basic:airfresh:filter_used_time"}
+Number:Dimensionless filter_life_level "Filter - Filter Life Level" (G_airfresh) {channel="miio:basic:airfresh:filter_life_level"}
+Switch physical_controls_locked "Physical Control Locked - Physical Control Locked" (G_airfresh) {channel="miio:basic:airfresh:physical_controls_locked"}
+Switch alarm "Alarm - Alarm" (G_airfresh) {channel="miio:basic:airfresh:alarm"}
+Dimmer brightness "Indicator Light - Brightness" (G_airfresh) {channel="miio:basic:airfresh:brightness"}
+Number motor_a_speed_rpm "Custom Service - Motor A Speed Rpm" (G_airfresh) {channel="miio:basic:airfresh:motor_a_speed_rpm"}
+Number motor_b_speed_rpm "Custom Service - Motor B Speed Rpm" (G_airfresh) {channel="miio:basic:airfresh:motor_b_speed_rpm"}
+Number:Temperature temperature "Custom Service - Temperature" (G_airfresh) {channel="miio:basic:airfresh:temperature"}
+```
+
 ### Mi PM2.5 Air Quality Monitor (zhimi.airmonitor.v1) item file lines
 
 note: Autogenerated example. Replace the id (airmonitor) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
@@ -9284,6 +10715,28 @@ Switch time_state "Time State" (G_airmonitor) {channel="miio:basic:airmonitor:ti
 Switch night_state "Night State" (G_airmonitor) {channel="miio:basic:airmonitor:night_state"}
 Number night_begin "Night Begin Time" (G_airmonitor) {channel="miio:basic:airmonitor:night_begin"}
 Number night_end "Night End Time" (G_airmonitor) {channel="miio:basic:airmonitor:night_end"}
+```
+
+### Mi Air Purifier 3C (zhimi.airp.mb4a) item file lines
+
+note: Autogenerated example. Replace the id (airp) in the channel with your own. Replace `basic` with `generic` in the thing UID depending on how your thing was discovered.
+
+```
+Group G_airp "Mi Air Purifier 3C" <status>
+String actions "Actions" (G_airp) {channel="miio:basic:airp:actions"}
+Switch on "Power" (G_airp) {channel="miio:basic:airp:on"}
+String fault "Air Purifier - Device Fault" (G_airp) {channel="miio:basic:airp:fault"}
+Number mode "Mode" (G_airp) {channel="miio:basic:airp:mode"}
+Number pm2_5_density "Environment - PM2 5 Density" (G_airp) {channel="miio:basic:airp:pm2_5_density"}
+Number:Dimensionless filter_life_level "Filter - Filter Life Level" (G_airp) {channel="miio:basic:airp:filter_life_level"}
+Number:Time filter_used_time "Filter - Filter Used Time" (G_airp) {channel="miio:basic:airp:filter_used_time"}
+Switch alarm "Alarm - Alarm" (G_airp) {channel="miio:basic:airp:alarm"}
+Number brightness "Screen - Brightness" (G_airp) {channel="miio:basic:airp:brightness"}
+Switch physical_controls_locked "Physical Control Locked - Physical Control Locked" (G_airp) {channel="miio:basic:airp:physical_controls_locked"}
+Number moto_speed_rpm "Custom Service - Moto Speed Rpm" (G_airp) {channel="miio:basic:airp:moto_speed_rpm"}
+String miio_lib_version "Custom Service - Miio Lib Version" (G_airp) {channel="miio:basic:airp:miio_lib_version"}
+Number favorite_speed "Custom Service - Favorite Speed" (G_airp) {channel="miio:basic:airp:favorite_speed"}
+Number:Time aqi_updata_heartbeat "Custom Service - Aqi Updata Heartbeat" (G_airp) {channel="miio:basic:airp:aqi_updata_heartbeat"}
 ```
 
 ### Mi Air Purifier 2 (mini) (zhimi.airpurifier.m1) item file lines
@@ -9839,7 +11292,7 @@ String cola "Others - Cola" (G_airpurifier) {channel="miio:basic:airpurifier:col
 String buttom_door "Others - Buttom Door" (G_airpurifier) {channel="miio:basic:airpurifier:buttom_door"}
 Number reboot_cause "Others - Reboot_cause" (G_airpurifier) {channel="miio:basic:airpurifier:reboot_cause"}
 Number manual_level "Others - Manual Level" (G_airpurifier) {channel="miio:basic:airpurifier:manual_level"}
-Number:duration powertime "Others - Powertime" (G_airpurifier) {channel="miio:basic:airpurifier:powertime"}
+Number:Time powertime "Others - Powertime" (G_airpurifier) {channel="miio:basic:airpurifier:powertime"}
 Number country_code "Others - Country Code" (G_airpurifier) {channel="miio:basic:airpurifier:country_code"}
 ```
 
@@ -9892,14 +11345,14 @@ Group G_fan "Mi Standing Fan" <status>
 Switch power "Power" (G_fan) {channel="miio:basic:fan:power"}
 Switch angleEnable "Rotation" (G_fan) {channel="miio:basic:fan:angleEnable"}
 Number:Time usedhours "Run Time" (G_fan) {channel="miio:basic:fan:usedhours"}
-Number angle "Angle" (G_fan) {channel="miio:basic:fan:angle"}
-Number poweroffTime "Timer" (G_fan) {channel="miio:basic:fan:poweroffTime"}
+Number:Angle angle "Angle" (G_fan) {channel="miio:basic:fan:angle"}
+Number:Time poweroffTime "Power-Off Timer" (G_fan) {channel="miio:basic:fan:poweroffTime"}
 Switch buzzer "Buzzer" (G_fan) {channel="miio:basic:fan:buzzer"}
 Number led_b "LED" (G_fan) {channel="miio:basic:fan:led_b"}
 Switch child_lock "Child Lock" (G_fan) {channel="miio:basic:fan:child_lock"}
-Number speedLevel "Speed Level" (G_fan) {channel="miio:basic:fan:speedLevel"}
+Dimmer speedLevel "Speed Level" (G_fan) {channel="miio:basic:fan:speedLevel"}
 Number speed "Speed" (G_fan) {channel="miio:basic:fan:speed"}
-Number naturalLevel "Natural Level" (G_fan) {channel="miio:basic:fan:naturalLevel"}
+Dimmer naturalLevel "Natural Level" (G_fan) {channel="miio:basic:fan:naturalLevel"}
 Switch acPower "AC Power" (G_fan) {channel="miio:basic:fan:acPower"}
 String move "Move Direction" (G_fan) {channel="miio:basic:fan:move"}
 ```
@@ -9913,17 +11366,17 @@ Group G_fan "Mi Smart Fan" <status>
 Switch power "Power" (G_fan) {channel="miio:basic:fan:power"}
 Switch angleEnable "Rotation" (G_fan) {channel="miio:basic:fan:angleEnable"}
 Number:Time usedhours "Run Time" (G_fan) {channel="miio:basic:fan:usedhours"}
-Number angle "Angle" (G_fan) {channel="miio:basic:fan:angle"}
-Number poweroffTime "Timer" (G_fan) {channel="miio:basic:fan:poweroffTime"}
+Number:Angle angle "Angle" (G_fan) {channel="miio:basic:fan:angle"}
+Number:Time poweroffTime "Power-Off Timer" (G_fan) {channel="miio:basic:fan:poweroffTime"}
 Switch buzzer "Buzzer" (G_fan) {channel="miio:basic:fan:buzzer"}
 Number led_b "LED" (G_fan) {channel="miio:basic:fan:led_b"}
 Switch child_lock "Child Lock" (G_fan) {channel="miio:basic:fan:child_lock"}
-Number speedLevel "Speed Level" (G_fan) {channel="miio:basic:fan:speedLevel"}
+Dimmer speedLevel "Speed Level" (G_fan) {channel="miio:basic:fan:speedLevel"}
 Number speed "Speed" (G_fan) {channel="miio:basic:fan:speed"}
-Number naturalLevel "Natural Level" (G_fan) {channel="miio:basic:fan:naturalLevel"}
+Dimmer naturalLevel "Natural Level" (G_fan) {channel="miio:basic:fan:naturalLevel"}
 Number temp_dec "Temperature" (G_fan) {channel="miio:basic:fan:temp_dec"}
 Number:Dimensionless humidity "Humidity" (G_fan) {channel="miio:basic:fan:humidity"}
-String acPower "AC Power" (G_fan) {channel="miio:basic:fan:acPower"}
+Switch acPower "AC Power" (G_fan) {channel="miio:basic:fan:acPower"}
 String mode "Battery Charge" (G_fan) {channel="miio:basic:fan:mode"}
 Number battery "Battery" (G_fan) {channel="miio:basic:fan:battery"}
 String move "Move Direction" (G_fan) {channel="miio:basic:fan:move"}
@@ -9938,17 +11391,17 @@ Group G_fan "Smartmi DC Pedestal Fan" <status>
 Switch power "Power" (G_fan) {channel="miio:basic:fan:power"}
 Switch angleEnable "Rotation" (G_fan) {channel="miio:basic:fan:angleEnable"}
 Number:Time usedhours "Run Time" (G_fan) {channel="miio:basic:fan:usedhours"}
-Number angle "Angle" (G_fan) {channel="miio:basic:fan:angle"}
-Number poweroffTime "Timer" (G_fan) {channel="miio:basic:fan:poweroffTime"}
+Number:Angle angle "Angle" (G_fan) {channel="miio:basic:fan:angle"}
+Number:Time poweroffTime "Power-Off Timer" (G_fan) {channel="miio:basic:fan:poweroffTime"}
 Switch buzzer "Buzzer" (G_fan) {channel="miio:basic:fan:buzzer"}
 Number led_b "LED" (G_fan) {channel="miio:basic:fan:led_b"}
 Switch child_lock "Child Lock" (G_fan) {channel="miio:basic:fan:child_lock"}
-Number speedLevel "Speed Level" (G_fan) {channel="miio:basic:fan:speedLevel"}
+Dimmer speedLevel "Speed Level" (G_fan) {channel="miio:basic:fan:speedLevel"}
 Number speed "Speed" (G_fan) {channel="miio:basic:fan:speed"}
-Number naturalLevel "Natural Level" (G_fan) {channel="miio:basic:fan:naturalLevel"}
+Dimmer naturalLevel "Natural Level" (G_fan) {channel="miio:basic:fan:naturalLevel"}
 Number temp_dec "Temperature" (G_fan) {channel="miio:basic:fan:temp_dec"}
 Number:Dimensionless humidity "Humidity" (G_fan) {channel="miio:basic:fan:humidity"}
-String acPower "AC Power" (G_fan) {channel="miio:basic:fan:acPower"}
+Switch acPower "AC Power" (G_fan) {channel="miio:basic:fan:acPower"}
 String mode "Battery Charge" (G_fan) {channel="miio:basic:fan:mode"}
 Number battery "Battery" (G_fan) {channel="miio:basic:fan:battery"}
 String move "Move Direction" (G_fan) {channel="miio:basic:fan:move"}
@@ -9963,17 +11416,17 @@ Group G_fan "Smartmi DC Pedestal Fan" <status>
 Switch power "Power" (G_fan) {channel="miio:basic:fan:power"}
 Switch angleEnable "Rotation" (G_fan) {channel="miio:basic:fan:angleEnable"}
 Number:Time usedhours "Run Time" (G_fan) {channel="miio:basic:fan:usedhours"}
-Number angle "Angle" (G_fan) {channel="miio:basic:fan:angle"}
-Number poweroffTime "Timer" (G_fan) {channel="miio:basic:fan:poweroffTime"}
+Number:Angle angle "Angle" (G_fan) {channel="miio:basic:fan:angle"}
+Number:Time poweroffTime "Power-Off Timer" (G_fan) {channel="miio:basic:fan:poweroffTime"}
 Switch buzzer "Buzzer" (G_fan) {channel="miio:basic:fan:buzzer"}
 Number led_b "LED" (G_fan) {channel="miio:basic:fan:led_b"}
 Switch child_lock "Child Lock" (G_fan) {channel="miio:basic:fan:child_lock"}
-Number speedLevel "Speed Level" (G_fan) {channel="miio:basic:fan:speedLevel"}
+Dimmer speedLevel "Speed Level" (G_fan) {channel="miio:basic:fan:speedLevel"}
 Number speed "Speed" (G_fan) {channel="miio:basic:fan:speed"}
-Number naturalLevel "Natural Level" (G_fan) {channel="miio:basic:fan:naturalLevel"}
+Dimmer naturalLevel "Natural Level" (G_fan) {channel="miio:basic:fan:naturalLevel"}
 Number temp_dec "Temperature" (G_fan) {channel="miio:basic:fan:temp_dec"}
 Number:Dimensionless humidity "Humidity" (G_fan) {channel="miio:basic:fan:humidity"}
-String acPower "AC Power" (G_fan) {channel="miio:basic:fan:acPower"}
+Switch acPower "AC Power" (G_fan) {channel="miio:basic:fan:acPower"}
 String mode "Battery Charge" (G_fan) {channel="miio:basic:fan:mode"}
 Number battery "Battery" (G_fan) {channel="miio:basic:fan:battery"}
 String move "Move Direction" (G_fan) {channel="miio:basic:fan:move"}
@@ -9988,14 +11441,14 @@ Group G_fan "Smartmi Inverter Pedestal Fan" <status>
 Switch power "Power" (G_fan) {channel="miio:basic:fan:power"}
 Switch angleEnable "Rotation" (G_fan) {channel="miio:basic:fan:angleEnable"}
 Number:Time usedhours "Run Time" (G_fan) {channel="miio:basic:fan:usedhours"}
-Number angle "Angle" (G_fan) {channel="miio:basic:fan:angle"}
-Number poweroffTime "Timer" (G_fan) {channel="miio:basic:fan:poweroffTime"}
+Number:Angle angle "Angle" (G_fan) {channel="miio:basic:fan:angle"}
+Number:Time poweroffTime "Power-Off Timer" (G_fan) {channel="miio:basic:fan:poweroffTime"}
 Switch buzzer "Buzzer" (G_fan) {channel="miio:basic:fan:buzzer"}
 Number led_b "LED" (G_fan) {channel="miio:basic:fan:led_b"}
 Switch child_lock "Child Lock" (G_fan) {channel="miio:basic:fan:child_lock"}
-Number speedLevel "Speed Level" (G_fan) {channel="miio:basic:fan:speedLevel"}
+Dimmer speedLevel "Speed Level" (G_fan) {channel="miio:basic:fan:speedLevel"}
 Number speed "Speed" (G_fan) {channel="miio:basic:fan:speed"}
-Number naturalLevel "Natural Level" (G_fan) {channel="miio:basic:fan:naturalLevel"}
+Dimmer naturalLevel "Natural Level" (G_fan) {channel="miio:basic:fan:naturalLevel"}
 Switch acPower "AC Power" (G_fan) {channel="miio:basic:fan:acPower"}
 String move "Move Direction" (G_fan) {channel="miio:basic:fan:move"}
 ```
